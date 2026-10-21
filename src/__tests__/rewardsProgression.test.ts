@@ -261,4 +261,33 @@ describe('Milestone 2: Rewards, Wallet & Progression System', () => {
     store.completeRangoli(); // repeat
     expect(useGameStore.getState().tokens).toBe(80); // no duplicate reward
   });
+
+  // 11. Transaction history bounding
+  it('strictly bounds transaction history to the most recent 20 entries under heavy activity', () => {
+    // Generate 30 transactions
+    for (let i = 1; i <= 30; i++) {
+      useGameStore.getState().addTokens(1, `Activity #${i}`);
+    }
+
+    const state = useGameStore.getState();
+    expect(state.tokenHistory.length).toBe(20);
+    expect(state.tokenHistory[state.tokenHistory.length - 1].source).toBe('Activity #30');
+    expect(state.tokenHistory[0].source).toBe('Activity #11');
+  });
+
+  // 12. Non-numeric or invalid token rejection
+  it('rejects invalid, negative, or non-numeric token additions without corrupting wallet balance', () => {
+    const initialTokens = useGameStore.getState().tokens; // 50
+    useGameStore.getState().addTokens(-20);
+    expect(useGameStore.getState().tokens).toBe(initialTokens);
+
+    useGameStore.getState().addTokens(0);
+    expect(useGameStore.getState().tokens).toBe(initialTokens);
+
+    useGameStore.getState().addTokens(NaN);
+    expect(useGameStore.getState().tokens).toBe(initialTokens);
+
+    useGameStore.getState().addTokens('invalid' as any);
+    expect(useGameStore.getState().tokens).toBe(initialTokens);
+  });
 });

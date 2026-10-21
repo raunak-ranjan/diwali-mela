@@ -76,38 +76,41 @@ export const RewardsProgressionModal: React.FC = () => {
       role="dialog"
       aria-modal="true"
       aria-labelledby="rewards-modal-title"
-      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md ${animClass}`}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) closeModal();
+      }}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-black/80 backdrop-blur-md ${animClass}`}
     >
-      <div className="relative w-full max-w-2xl bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950/95 border-2 border-festive-gold/60 rounded-3xl shadow-2xl shadow-amber-500/20 flex flex-col max-h-[90vh] overflow-hidden">
+      <div className="relative w-full max-w-2xl bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950/95 border-2 border-festive-gold/60 rounded-3xl shadow-2xl shadow-amber-500/20 flex flex-col max-h-[92vh] overflow-hidden">
         {/* Header */}
-        <div className="relative px-6 py-4 border-b border-amber-500/20 bg-gradient-to-r from-amber-950/40 via-slate-900 to-amber-950/40 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-600 to-festive-gold flex items-center justify-center text-amber-950 shadow-md">
-              <Coins className="w-6 h-6" />
+        <div className="relative px-4 sm:px-6 py-3.5 sm:py-4 border-b border-amber-500/20 bg-gradient-to-r from-amber-950/40 via-slate-900 to-amber-950/40 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-amber-600 to-festive-gold flex items-center justify-center text-amber-950 shadow-md shrink-0">
+              <Coins className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
               <h2
                 id="rewards-modal-title"
-                className="text-lg sm:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-festive-gold to-yellow-100"
+                className="text-base sm:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-festive-gold to-yellow-100"
               >
                 Festival Rewards & Progression
               </h2>
-              <p className="text-xs text-amber-300/80">Manage your festival tokens, wardrobe, and achievements</p>
+              <p className="text-[11px] sm:text-xs text-amber-300/80">Manage your festival tokens, wardrobe, and achievements</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Balance Pill */}
-            <div className="flex items-center gap-1.5 bg-amber-500/10 border border-festive-gold/50 rounded-full px-3 py-1">
-              <span className="text-xs uppercase text-amber-300 font-bold">Balance:</span>
-              <span className="text-base font-black text-festive-gold font-mono">{tokens} 🪙</span>
+            <div className="flex items-center gap-1.5 bg-amber-500/10 border border-festive-gold/50 rounded-full px-2.5 sm:px-3 py-1 shrink-0">
+              <span className="text-[10px] sm:text-xs uppercase text-amber-300 font-bold hidden xs:inline">Balance:</span>
+              <span className="text-xs sm:text-base font-black text-festive-gold font-mono">{tokens} 🪙</span>
             </div>
 
             {/* Close Button */}
             <button
               onClick={closeModal}
               aria-label="Close modal"
-              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-all cursor-pointer"
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-festive-gold"
             >
               <X className="w-5 h-5" />
             </button>
@@ -115,10 +118,10 @@ export const RewardsProgressionModal: React.FC = () => {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-slate-800 bg-slate-950/40 px-4 sm:px-6 gap-2">
+        <div className="flex border-b border-slate-800 bg-slate-950/40 px-3 sm:px-6 gap-1 sm:gap-2 overflow-x-auto whitespace-nowrap">
           <button
             onClick={() => setActiveTab('wardrobe')}
-            className={`flex items-center gap-2 py-3 px-3 sm:px-4 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            className={`flex items-center gap-2 py-3 px-3 sm:px-4 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer shrink-0 focus:outline-none focus:ring-2 focus:ring-festive-gold/50 rounded-t-lg ${
               activeTab === 'wardrobe'
                 ? 'border-festive-gold text-festive-gold bg-amber-500/10'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -133,7 +136,7 @@ export const RewardsProgressionModal: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('wallet')}
-            className={`flex items-center gap-2 py-3 px-3 sm:px-4 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            className={`flex items-center gap-2 py-3 px-3 sm:px-4 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer shrink-0 focus:outline-none focus:ring-2 focus:ring-festive-gold/50 rounded-t-lg ${
               activeTab === 'wallet'
                 ? 'border-festive-gold text-festive-gold bg-amber-500/10'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -145,7 +148,7 @@ export const RewardsProgressionModal: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('progression')}
-            className={`flex items-center gap-2 py-3 px-3 sm:px-4 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            className={`flex items-center gap-2 py-3 px-3 sm:px-4 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer shrink-0 focus:outline-none focus:ring-2 focus:ring-festive-gold/50 rounded-t-lg ${
               activeTab === 'progression'
                 ? 'border-festive-gold text-festive-gold bg-amber-500/10'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -499,7 +502,7 @@ export const RewardsProgressionModal: React.FC = () => {
           <span>Diwali Mela Festival Progression &copy; 2026</span>
           <button
             onClick={closeModal}
-            className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold transition-all cursor-pointer"
+            className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-festive-gold"
           >
             Close
           </button>

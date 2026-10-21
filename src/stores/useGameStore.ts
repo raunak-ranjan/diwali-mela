@@ -314,7 +314,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   addTokens: (amount: number, source: string = 'Festival Activity') => {
-    if (amount <= 0 || isNaN(amount)) return;
+    if (typeof amount !== 'number' || amount <= 0 || isNaN(amount)) return;
     const current = get();
     const newTokens = current.tokens + amount;
     const newStats: MiniGameStats = {
