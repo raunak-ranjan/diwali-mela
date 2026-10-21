@@ -121,12 +121,12 @@ export const BalloonShootingUI: React.FC = () => {
           </div>
 
           {/* Title */}
-          <div className="text-center hidden sm:block">
-            <div className="text-sm font-bold text-festive-gold flex items-center justify-center gap-1.5">
-              <Crosshair className="w-4 h-4 text-festive-saffron" />
+          <div className="text-center flex flex-col items-center">
+            <div className="text-xs sm:text-sm font-bold text-festive-gold flex items-center justify-center gap-1.5">
+              <Crosshair className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-festive-saffron" />
               <span>CARNIVAL BALLOON SHOOT</span>
             </div>
-            <div className="text-[11px] text-gray-300">Tap or Click balloons to pop them!</div>
+            <div className="text-[10px] sm:text-[11px] text-gray-300">Tap or Click balloons to pop them!</div>
           </div>
 
           {/* Current Score */}
@@ -157,13 +157,22 @@ export const BalloonShootingUI: React.FC = () => {
           {balloons.map((b) => (
             <div
               key={b.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!balloonGame.isPlaying || b.isPopped) return;
+                soundEngine.playShootSound();
+                setBalloons((prev) =>
+                  prev.map((item) => (item.id === b.id ? { ...item, isPopped: true } : item))
+                );
+                recordBalloonHit(b.points);
+              }}
               style={{
                 left: `${b.x}%`,
                 top: `${b.y}%`,
                 transform: 'translate(-50%, -50%)',
               }}
-              className={`absolute transition-transform duration-200 ${
-                b.isPopped ? 'scale-0 opacity-0 pointer-events-none' : 'scale-100'
+              className={`absolute transition-transform duration-200 cursor-pointer ${
+                b.isPopped ? 'scale-0 opacity-0 pointer-events-none' : 'scale-100 hover:scale-110 active:scale-95'
               }`}
             >
               <div

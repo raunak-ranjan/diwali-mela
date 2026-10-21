@@ -26,6 +26,11 @@ export function App() {
     // Check touch capabilities
     const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     setIsTouchDevice(isTouch);
+
+    // Expose for testing & debug inspection
+    if (typeof window !== 'undefined') {
+      (window as any).__gameStore = useGameStore;
+    }
   }, [initializeSave, setIsTouchDevice]);
 
   if (!isLoaded) {

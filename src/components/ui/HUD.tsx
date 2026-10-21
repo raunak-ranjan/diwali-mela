@@ -61,8 +61,9 @@ export const HUD: React.FC = () => {
           {/* Grand Fireworks Finale Quick Trigger */}
           <button
             onClick={() => openModal('finale')}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-red-600 to-amber-600 hover:brightness-110 active:scale-95 transition-all text-white text-xs font-bold py-2 px-3.5 rounded-full shadow-lg border border-festive-gold/60 cursor-pointer"
+            aria-label="Grand Fireworks"
             title="Watch Grand Fireworks Celebration"
+            className="flex items-center gap-1.5 bg-gradient-to-r from-red-600 to-amber-600 hover:brightness-110 active:scale-95 transition-all text-white text-xs font-bold py-2 px-3.5 rounded-full shadow-lg border border-festive-gold/60 cursor-pointer"
           >
             <Sparkles className="w-4 h-4 text-festive-gold animate-bounce" />
             <span className="hidden md:inline">Grand Fireworks</span>

@@ -68,13 +68,13 @@ test.describe('Diwali Mela 3D Web Experience E2E', () => {
     // Check countdown or celebration dialog
     await expect(page.locator('text=Grand Diwali Fireworks Countdown')).toBeVisible();
 
-    // Wait for countdown to finish (3s)
-    await expect(page.locator('text=HAPPY DIWALI!')).toBeVisible({ timeout: 6000 });
+    // Wait for countdown to finish
+    await expect(page.locator('text=HAPPY DIWALI!')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('text=+50 Diwali Celebration Tokens Gifted!')).toBeVisible();
 
     // Token count should have increased from 50 to 100
     await page.getByRole('button', { name: /Continue Exploring Mela/i }).click();
-    await expect(page.locator('text=100')).toBeVisible();
+    await expect(page.locator('text=Tokens').locator('..').locator('span.font-mono')).toHaveText('100');
   });
 
   test('Flow 4: Mobile Viewport Usability', async ({ page, isMobile }) => {

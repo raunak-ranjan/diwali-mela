@@ -112,6 +112,7 @@ export const RangoliEditorUI: React.FC = () => {
               return (
                 <path
                   key={idx}
+                  data-testid="rangoli-petal"
                   d={path}
                   fill={color}
                   stroke="#0f172a"

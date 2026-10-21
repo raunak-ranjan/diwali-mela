@@ -9,19 +9,19 @@ export const FinaleModal: React.FC = () => {
   const closeModal = useGameStore((s) => s.closeModal);
   const addTokens = useGameStore((s) => s.addTokens);
 
-  const [countdown, setCountdown] = useState(3);
+  const [countdown, setCountdown] = useState(2);
   const [isPlayingShow, setIsPlayingShow] = useState(false);
 
   useEffect(() => {
     if (activeModal !== 'finale') {
       setIsPlayingShow(false);
-      setCountdown(3);
+      setCountdown(2);
       return;
     }
 
     // Begin countdown
-    let timer = 3;
-    setCountdown(3);
+    let timer = 2;
+    setCountdown(2);
     const interval = setInterval(() => {
       timer -= 1;
       setCountdown(timer);
