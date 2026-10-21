@@ -101,7 +101,7 @@ export const PlayerController = () => {
       prevMouseY = e.clientY;
 
       yaw.current -= dx * 0.005;
-      pitch.current = Math.max(0.05, Math.min(1.1, pitch.current + dy * 0.005));
+      pitch.current = Math.max(-0.6, Math.min(1.0, pitch.current + dy * 0.005));
     };
 
     const onMouseUp = () => {
@@ -134,8 +134,8 @@ export const PlayerController = () => {
       const touchSens = useGameStore.getState().settings.touchSensitivity;
       yaw.current -= input.touchLookDelta.x * 0.006 * touchSens;
       pitch.current = Math.max(
-        0.05,
-        Math.min(1.1, pitch.current + input.touchLookDelta.y * 0.006 * touchSens)
+        -0.6,
+        Math.min(1.0, pitch.current + input.touchLookDelta.y * 0.006 * touchSens)
       );
       input.resetTouchLookDelta();
     }

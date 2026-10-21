@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { soundEngine } from '../../../audio/soundEngine';
@@ -29,13 +29,13 @@ interface Rocket {
   z: number;
   vy: number;
   targetY: number;
-  burstType: 'peony' | 'willow' | 'ring' | 'crackle';
+  burstType: 'peony' | 'willow' | 'ring' | 'crackle' | 'kamuro';
   colorIndex: number;
 }
 
-// Traditional Diwali Palette optimized for midnight indigo contrast
+// Traditional Diwali Festival Palette optimized for midnight indigo contrast
 const PALETTE = [
-  new THREE.Color('#FFD700'), // Pure Gold
+  new THREE.Color('#FFD700'), // Pure Gold (Zari)
   new THREE.Color('#FF1744'), // Gulal Crimson
   new THREE.Color('#00E5FF'), // Peacock Turquoise
   new THREE.Color('#00E676'), // Festive Emerald
@@ -44,43 +44,97 @@ const PALETTE = [
   new THREE.Color('#FFE082'), // Champagne Spark
 ];
 
+// Soft luminous procedural spark texture for incandescent pyrotechnics
+const createSparkTexture = (): THREE.CanvasTexture | null => {
+  if (typeof document === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = 32;
+  canvas.height = 32;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+  grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+  grad.addColorStop(0.2, 'rgba(255, 250, 220, 0.95)');
+  grad.addColorStop(0.45, 'rgba(255, 190, 80, 0.6)');
+  grad.addColorStop(0.75, 'rgba(255, 120, 30, 0.18)');
+  grad.addColorStop(1, 'rgba(200, 50, 0, 0)');
+
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 32, 32);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.generateMipmaps = false;
+  tex.minFilter = THREE.LinearFilter;
+  return tex;
+};
+
+// Create pre-allocated spark particle pool
+const createSparkPool = (count: number): SparkParticle[] => {
+  const p: SparkParticle[] = [];
+  for (let i = 0; i < count; i++) {
+    p.push({
+      active: false,
+      x: 0,
+      y: -1000,
+      z: 0,
+      vx: 0,
+      vy: 0,
+      vz: 0,
+      r: 1,
+      g: 1,
+      b: 1,
+      life: 0,
+      maxLife: 1,
+      gravity: -5,
+      drag: 0.98,
+      twinkle: false,
+    });
+  }
+  return p;
+};
+
 export const FireworksShow: React.FC<{ active: boolean }> = ({ active }) => {
   const pointsRef = useRef<THREE.Points>(null);
+  const burstLightRef = useRef<THREE.PointLight>(null);
+  const burstLightIntensity = useRef(0);
+
   const quality = useGameStore((s) => s.settings.graphicsQuality);
   const reducedMotion = useGameStore((s) => s.settings.reducedMotion);
 
   // Budget particles based on graphics tier
   const maxParticles = quality === 'high' ? 1200 : quality === 'medium' ? 800 : 450;
 
-  // Pre-allocated flat buffers
-  const { positions, colors, pool } = useMemo(() => {
-    const pos = new Float32Array(maxParticles * 3);
-    const col = new Float32Array(maxParticles * 3);
-    const p: SparkParticle[] = [];
+  // Reusable procedural spark texture
+  const sparkTexture = useMemo(() => createSparkTexture(), []);
 
+  useEffect(() => {
+    return () => {
+      sparkTexture?.dispose();
+    };
+  }, [sparkTexture]);
+
+  // Initial buffer allocations for buffer geometry
+  const initialPositions = useMemo(() => {
+    const arr = new Float32Array(maxParticles * 3);
     for (let i = 0; i < maxParticles; i++) {
-      pos[i * 3 + 1] = -1000; // Initialize out of sight
-      p.push({
-        active: false,
-        x: 0,
-        y: -1000,
-        z: 0,
-        vx: 0,
-        vy: 0,
-        vz: 0,
-        r: 1,
-        g: 1,
-        b: 1,
-        life: 0,
-        maxLife: 1,
-        gravity: -5,
-        drag: 0.98,
-        twinkle: false,
-      });
+      arr[i * 3 + 1] = -1000;
     }
-
-    return { positions: pos, colors: col, pool: p };
+    return arr;
   }, [maxParticles]);
+
+  const initialColors = useMemo(() => {
+    const arr = new Float32Array(maxParticles * 3);
+    for (let i = 0; i < maxParticles; i++) {
+      arr[i * 3] = 1;
+      arr[i * 3 + 1] = 1;
+      arr[i * 3 + 2] = 1;
+    }
+    return arr;
+  }, [maxParticles]);
+
+  // Pre-allocated pool of particles (max budget across any quality tier)
+  const poolRef = useRef<SparkParticle[]>(createSparkPool(1200));
 
   // Pre-allocated rockets pool
   const rockets = useRef<Rocket[]>([
@@ -88,6 +142,8 @@ export const FireworksShow: React.FC<{ active: boolean }> = ({ active }) => {
     { active: false, x: 0, y: 0, z: 0, vy: 0, targetY: 28, burstType: 'willow', colorIndex: 0 },
     { active: false, x: 0, y: 0, z: 0, vy: 0, targetY: 28, burstType: 'ring', colorIndex: 0 },
     { active: false, x: 0, y: 0, z: 0, vy: 0, targetY: 28, burstType: 'crackle', colorIndex: 0 },
+    { active: false, x: 0, y: 0, z: 0, vy: 0, targetY: 28, burstType: 'kamuro', colorIndex: 0 },
+    { active: false, x: 0, y: 0, z: 0, vy: 0, targetY: 28, burstType: 'peony', colorIndex: 0 },
   ]);
 
   // Spawn an individual spark in the pre-allocated pool
@@ -100,15 +156,20 @@ export const FireworksShow: React.FC<{ active: boolean }> = ({ active }) => {
     vz: number,
     color: THREE.Color,
     maxLife: number,
-    gravity: number = -6.0,
+    gravity: number = -5.5,
     drag: number = 0.975,
     twinkle: boolean = false
   ) => {
-    // Find inactive or oldest particle
-    let target = pool.find((p) => !p.active);
+    const pool = poolRef.current;
+    let target: SparkParticle | undefined;
+    for (let i = 0; i < maxParticles; i++) {
+      if (!pool[i].active) {
+        target = pool[i];
+        break;
+      }
+    }
     if (!target) {
-      // Overwrite first expired
-      target = pool[Math.floor(Math.random() * pool.length)];
+      target = pool[Math.floor(Math.random() * maxParticles)];
     }
 
     target.active = true;
@@ -133,7 +194,7 @@ export const FireworksShow: React.FC<{ active: boolean }> = ({ active }) => {
     targetX: number,
     targetY: number,
     targetZ: number,
-    burstType: 'peony' | 'willow' | 'ring' | 'crackle',
+    burstType: 'peony' | 'willow' | 'ring' | 'crackle' | 'kamuro',
     colorIdx: number
   ) => {
     const rocket = rockets.current.find((r) => !r.active);
@@ -141,10 +202,10 @@ export const FireworksShow: React.FC<{ active: boolean }> = ({ active }) => {
 
     rocket.active = true;
     rocket.x = targetX + (Math.random() - 0.5) * 4;
-    rocket.y = 1.0; // Launch from ground / horizon
+    rocket.y = 1.0;
     rocket.z = targetZ;
     rocket.targetY = targetY;
-    rocket.vy = 26 + Math.random() * 6; // Ascending speed
+    rocket.vy = 26 + Math.random() * 6;
     rocket.burstType = burstType;
     rocket.colorIndex = colorIdx;
   };
@@ -157,52 +218,69 @@ export const FireworksShow: React.FC<{ active: boolean }> = ({ active }) => {
     const speedMult = reducedMotion ? 0.55 : 1.0;
     const sparkCount = quality === 'low' ? 35 : quality === 'medium' ? 65 : 90;
 
+    // Trigger subtle burst flash on distant horizon / fort
+    if (burstLightRef.current && !reducedMotion) {
+      burstLightRef.current.position.set(rocket.x, rocket.y, rocket.z);
+      burstLightRef.current.color.copy(baseColor);
+      burstLightIntensity.current = quality === 'low' ? 2.5 : 4.0;
+    }
+
     switch (rocket.burstType) {
       case 'willow': {
-        // Golden Weeping Willow (Zari Anar) — heavy trailing golden sparks
+        // Golden Weeping Willow (Zari Anar) — heavy weeping golden streamers
         const goldColor = PALETTE[0];
+        const champagne = PALETTE[6];
         for (let i = 0; i < sparkCount; i++) {
           const theta = Math.random() * Math.PI * 2;
           const phi = Math.acos(Math.random() * 2 - 1);
-          const speed = (2.5 + Math.random() * 5.5) * speedMult;
+          const speed = (2.2 + Math.random() * 5.2) * speedMult;
+          const col = i % 4 === 0 ? champagne : goldColor;
 
           spawnSpark(
             rocket.x,
             rocket.y,
             rocket.z,
             speed * Math.sin(phi) * Math.cos(theta),
-            speed * Math.cos(phi) + 1.5,
+            speed * Math.cos(phi) + 1.2,
             speed * Math.sin(phi) * Math.sin(theta),
-            goldColor,
-            1.8 + Math.random() * 0.8, // Long hang time
-            -4.5, // Gentle gravity weep
-            0.985,
-            true // Twinkle on descent
+            col,
+            2.2 + Math.random() * 0.8,
+            -3.8,
+            0.986,
+            true
           );
         }
         break;
       }
 
       case 'ring': {
-        // Saturn Double-Ring Burst (Outer Ring + Inner Core)
-        const coreColor = PALETTE[0]; // Gold core
+        // Saturn Double-Ring Burst (Outer Saturated Ring + Concentric Golden Core)
+        const coreColor = PALETTE[0];
+        const ringTiltAngle = 0.35;
+        const cosTilt = Math.cos(ringTiltAngle);
+        const sinTilt = Math.sin(ringTiltAngle);
+
         for (let i = 0; i < sparkCount; i++) {
           const angle = (i / sparkCount) * Math.PI * 2;
           const isOuterRing = i % 3 !== 0;
-          const speed = (isOuterRing ? 6.5 + Math.random() * 1.5 : 2.0 + Math.random() * 1.5) * speedMult;
+          const speed = (isOuterRing ? 6.5 + Math.random() * 1.5 : 2.2 + Math.random() * 1.2) * speedMult;
           const col = isOuterRing ? baseColor : coreColor;
+
+          const rawX = Math.cos(angle) * speed;
+          const rawY = Math.sin(angle) * speed * 0.85;
+          const rawZ = (Math.random() - 0.5) * 1.2;
 
           spawnSpark(
             rocket.x,
             rocket.y,
             rocket.z,
-            Math.cos(angle) * speed,
-            Math.sin(angle) * speed * 0.4 + 1.0,
-            (Math.random() - 0.5) * 1.5,
+            rawX,
+            rawY * cosTilt - rawZ * sinTilt + 1.0,
+            rawY * sinTilt + rawZ * cosTilt,
             col,
-            1.3 + Math.random() * 0.5,
-            -6.0,
-            0.97,
+            1.4 + Math.random() * 0.4,
+            -5.5,
+            0.972,
             false
           );
         }
@@ -210,36 +288,12 @@ export const FireworksShow: React.FC<{ active: boolean }> = ({ active }) => {
       }
 
       case 'crackle': {
-        // Chrysanthemum Crackle Burst
+        // Chrysanthemum Crackle Burst (Vibrant jewel core with scintillating gold crackles)
         for (let i = 0; i < sparkCount; i++) {
           const theta = Math.random() * Math.PI * 2;
           const phi = Math.acos(Math.random() * 2 - 1);
           const speed = (4.0 + Math.random() * 8.0) * speedMult;
-
-          spawnSpark(
-            rocket.x,
-            rocket.y,
-            rocket.z,
-            speed * Math.sin(phi) * Math.cos(theta),
-            speed * Math.cos(phi) + 2.0,
-            speed * Math.sin(phi) * Math.sin(theta),
-            i % 2 === 0 ? baseColor : PALETTE[6],
-            1.1 + Math.random() * 0.6,
-            -7.0,
-            0.96,
-            true
-          );
-        }
-        break;
-      }
-
-      case 'peony':
-      default: {
-        // Classic spherical Peony
-        for (let i = 0; i < sparkCount; i++) {
-          const theta = Math.random() * Math.PI * 2;
-          const phi = Math.acos(Math.random() * 2 - 1);
-          const speed = (3.5 + Math.random() * 6.5) * speedMult;
+          const col = i % 2 === 0 ? baseColor : PALETTE[6];
 
           spawnSpark(
             rocket.x,
@@ -248,8 +302,61 @@ export const FireworksShow: React.FC<{ active: boolean }> = ({ active }) => {
             speed * Math.sin(phi) * Math.cos(theta),
             speed * Math.cos(phi) + 1.8,
             speed * Math.sin(phi) * Math.sin(theta),
-            baseColor,
-            1.2 + Math.random() * 0.6,
+            col,
+            1.2 + Math.random() * 0.5,
+            -6.5,
+            0.965,
+            true
+          );
+        }
+        break;
+      }
+
+      case 'kamuro': {
+        // Royal Brocade Crown (Kamuro) — expansive golden crown with cascading canopy
+        const crownGold = PALETTE[0];
+        const saffron = PALETTE[4];
+        for (let i = 0; i < sparkCount; i++) {
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.acos(Math.random() * 1.4 - 0.7);
+          const speed = (3.5 + Math.random() * 6.5) * speedMult;
+          const col = i % 3 === 0 ? saffron : crownGold;
+
+          spawnSpark(
+            rocket.x,
+            rocket.y,
+            rocket.z,
+            speed * Math.sin(phi) * Math.cos(theta),
+            Math.abs(speed * Math.cos(phi)) * 0.9 + 2.2,
+            speed * Math.sin(phi) * Math.sin(theta),
+            col,
+            2.0 + Math.random() * 0.6,
+            -4.5,
+            0.982,
+            true
+          );
+        }
+        break;
+      }
+
+      case 'peony':
+      default: {
+        // Classic Spherical Floral Peony with Hot Radiant Core
+        for (let i = 0; i < sparkCount; i++) {
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.acos(Math.random() * 2 - 1);
+          const speed = (3.5 + Math.random() * 6.5) * speedMult;
+          const isCore = i % 5 === 0;
+
+          spawnSpark(
+            rocket.x,
+            rocket.y,
+            rocket.z,
+            speed * Math.sin(phi) * Math.cos(theta),
+            speed * Math.cos(phi) + 1.6,
+            speed * Math.sin(phi) * Math.sin(theta),
+            isCore ? PALETTE[6] : baseColor,
+            1.3 + Math.random() * 0.5,
             -5.5,
             0.975,
             false
@@ -274,8 +381,32 @@ export const FireworksShow: React.FC<{ active: boolean }> = ({ active }) => {
 
   useFrame(({ clock }, delta) => {
     if (!pointsRef.current) return;
+    const geo = pointsRef.current.geometry;
+    const posAttr = geo.attributes.position as THREE.BufferAttribute | undefined;
+    const colAttr = geo.attributes.color as THREE.BufferAttribute | undefined;
+    if (!posAttr || !colAttr) return;
+
+    const positions = posAttr.array as Float32Array;
+    const colors = colAttr.array as Float32Array;
+    const pool = poolRef.current;
+    if (!pool || pool.length === 0) return;
+
     const now = clock.getElapsedTime();
     const safeDelta = Math.min(delta, 0.05);
+
+    // Fade burst light intensity
+    if (burstLightRef.current) {
+      if (burstLightIntensity.current > 0.05) {
+        burstLightIntensity.current = THREE.MathUtils.lerp(
+          burstLightIntensity.current,
+          0,
+          1 - Math.exp(-10 * safeDelta)
+        );
+        burstLightRef.current.intensity = burstLightIntensity.current;
+      } else {
+        burstLightRef.current.intensity = 0;
+      }
+    }
 
     if (active) {
       if (showStartTime.current === null) {
@@ -283,32 +414,33 @@ export const FireworksShow: React.FC<{ active: boolean }> = ({ active }) => {
       }
       const elapsed = now - showStartTime.current;
 
-      // Choreographed launch timing
-      const interval = elapsed < 4 ? 1.2 : elapsed < 10 ? 1.0 : elapsed < 16 ? 0.75 : 1.3;
+      // Choreographed launch timing: introductory rhythm, escalating pace, climax barrage
+      const interval = elapsed < 4 ? 1.3 : elapsed < 10 ? 0.95 : elapsed < 16 ? 0.7 : 1.2;
 
       if (now - lastLaunchTime.current > interval) {
         lastLaunchTime.current = now;
         salvoCounter.current += 1;
         const s = salvoCounter.current;
 
-        // Choose position across the northern fort skyline (X: -24 to 24, Z: 20 to 50)
-        const rx = ((s % 5) - 2) * 11 + (Math.random() - 0.5) * 6;
-        const rz = 25 + Math.random() * 25;
-        const ry = 25 + Math.random() * 12;
+        // Position across the fairground sky and northern fort skyline (X: -22 to 22, Z: 8 to 32)
+        const rx = ((s % 5) - 2) * 9 + (Math.random() - 0.5) * 5;
+        const rz = 8 + (s % 4) * 7 + (Math.random() - 0.5) * 4;
+        const ry = 19 + Math.random() * 9;
 
-        const burstTypes: Array<'peony' | 'willow' | 'ring' | 'crackle'> = [
+        const burstTypes: Array<'peony' | 'willow' | 'ring' | 'crackle' | 'kamuro'> = [
           'peony',
           'willow',
           'ring',
           'crackle',
+          'kamuro',
         ];
         const chosenType = burstTypes[s % burstTypes.length];
         launchRocket(rx, ry, rz, chosenType, s);
 
-        // Climax barrage launches extra simultaneous rocket!
+        // Climax barrage launches extra synchronized rocket
         if (elapsed >= 10 && elapsed < 16) {
-          const rx2 = -rx * 0.8;
-          launchRocket(rx2, ry + 3, rz, 'willow', s + 2);
+          const rx2 = -rx * 0.75;
+          launchRocket(rx2, ry + 2, rz + 6, s % 2 === 0 ? 'kamuro' : 'willow', s + 3);
         }
       }
     }
@@ -318,19 +450,19 @@ export const FireworksShow: React.FC<{ active: boolean }> = ({ active }) => {
       if (!r.active) return;
 
       r.y += r.vy * safeDelta;
-      r.vy -= 14 * safeDelta; // Gravity deceleration on ascent
+      r.vy -= 14 * safeDelta;
 
-      // Trail spark
+      // Ascending golden tail sparks
       if (!reducedMotion) {
         spawnSpark(
-          r.x + (Math.random() - 0.5) * 0.3,
-          r.y - 0.3,
-          r.z + (Math.random() - 0.5) * 0.3,
-          (Math.random() - 0.5) * 0.6,
-          -2.0,
-          (Math.random() - 0.5) * 0.6,
-          PALETTE[0], // Gold trail
-          0.35,
+          r.x + (Math.random() - 0.5) * 0.25,
+          r.y - 0.25,
+          r.z + (Math.random() - 0.5) * 0.25,
+          (Math.random() - 0.5) * 0.5,
+          -1.8,
+          (Math.random() - 0.5) * 0.5,
+          PALETTE[0],
+          0.3,
           -4.0,
           0.95,
           true
@@ -345,10 +477,7 @@ export const FireworksShow: React.FC<{ active: boolean }> = ({ active }) => {
     });
 
     // 2. UPDATE ACTIVE PARTICLES BUFFER ATTRIBUTES
-    const posAttr = pointsRef.current.geometry.attributes.position as THREE.BufferAttribute;
-    const colAttr = pointsRef.current.geometry.attributes.color as THREE.BufferAttribute;
-
-    for (let i = 0; i < pool.length; i++) {
+    for (let i = 0; i < maxParticles; i++) {
       const p = pool[i];
       if (!p.active) {
         positions[i * 3 + 1] = -1000;
@@ -371,19 +500,34 @@ export const FireworksShow: React.FC<{ active: boolean }> = ({ active }) => {
       p.y += p.vy * safeDelta;
       p.z += p.vz * safeDelta;
 
-      // Natural fading and scintillating twinkle
-      let alpha = 1.0 - p.life / p.maxLife;
+      const t = p.life / p.maxLife;
+
+      // Pyrotechnic color & temperature curve:
+      // Superheated white-hot ignition for first 12% of burn, transitioning to jewel tone
+      let r = p.r;
+      let g = p.g;
+      let b = p.b;
+
+      if (t < 0.12) {
+        const heat = 1.0 - t / 0.12;
+        r = THREE.MathUtils.lerp(r, 1.0, heat * 0.7);
+        g = THREE.MathUtils.lerp(g, 0.98, heat * 0.7);
+        b = THREE.MathUtils.lerp(b, 0.85, heat * 0.7);
+      }
+
+      let alpha = Math.max(0, 1.0 - Math.pow(t, 1.3));
       if (p.twinkle) {
-        alpha *= 0.75 + 0.25 * Math.sin(p.life * 28 + i * 2);
+        const freq = reducedMotion ? 4.0 : 26.0;
+        alpha *= 0.75 + 0.25 * Math.sin(p.life * freq + i * 1.8);
       }
 
       positions[i * 3] = p.x;
       positions[i * 3 + 1] = p.y;
       positions[i * 3 + 2] = p.z;
 
-      colors[i * 3] = p.r * alpha;
-      colors[i * 3 + 1] = p.g * alpha;
-      colors[i * 3 + 2] = p.b * alpha;
+      colors[i * 3] = r * alpha;
+      colors[i * 3 + 1] = g * alpha;
+      colors[i * 3 + 2] = b * alpha;
     }
 
     posAttr.needsUpdate = true;
@@ -391,24 +535,34 @@ export const FireworksShow: React.FC<{ active: boolean }> = ({ active }) => {
   });
 
   return (
-    <points ref={pointsRef}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          args={[positions, 3]}
+    <>
+        <pointLight
+          ref={burstLightRef}
+          position={[0, 22, 18]}
+          intensity={0}
+          distance={70}
+          decay={1.6}
         />
-        <bufferAttribute
-          attach="attributes-color"
-          args={[colors, 3]}
-        />
-      </bufferGeometry>
-      <pointsMaterial
-        size={quality === 'low' ? 0.75 : 0.85}
-        vertexColors
-        transparent
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-      />
-    </points>
+        <points ref={pointsRef}>
+          <bufferGeometry>
+            <bufferAttribute
+              attach="attributes-position"
+              args={[initialPositions, 3]}
+            />
+            <bufferAttribute
+              attach="attributes-color"
+              args={[initialColors, 3]}
+            />
+          </bufferGeometry>
+          <pointsMaterial
+            size={quality === 'low' ? 1.4 : quality === 'medium' ? 1.8 : 2.2}
+            map={sparkTexture ?? undefined}
+            vertexColors
+            transparent
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
+        </points>
+    </>
   );
 };

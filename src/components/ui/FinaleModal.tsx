@@ -59,8 +59,8 @@ export const FinaleModal: React.FC = () => {
   if (activeModal !== 'finale') return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fadeIn">
-      <div className="relative max-w-lg w-full bg-gradient-to-b from-festive-nightBlue via-slate-950 to-festive-deepNavy border-2 border-festive-gold rounded-3xl shadow-2xl p-6 text-center text-white overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-gradient-to-t from-black/80 via-black/20 to-transparent p-4 animate-fadeIn pointer-events-none">
+      <div className="relative max-w-lg w-full bg-gradient-to-b from-festive-nightBlue/95 via-slate-950/95 to-festive-deepNavy/95 border-2 border-festive-gold rounded-3xl shadow-2xl p-6 text-center text-white overflow-hidden pointer-events-auto backdrop-blur-md mb-2 sm:mb-0">
         {/* Close Button */}
         <button
           onClick={handleClose}
