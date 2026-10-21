@@ -8,6 +8,7 @@ export const FinaleModal: React.FC = () => {
   const activeModal = useGameStore((s) => s.activeModal);
   const closeModal = useGameStore((s) => s.closeModal);
   const addTokens = useGameStore((s) => s.addTokens);
+  const recordFireworksWatched = useGameStore((s) => s.recordFireworksWatched);
 
   const [countdown, setCountdown] = useState(2);
   const [isPlayingShow, setIsPlayingShow] = useState(false);
@@ -46,12 +47,13 @@ export const FinaleModal: React.FC = () => {
         origin: { y: 0.6 },
         colors: ['#FFD700', '#FF5722', '#E91E63', '#00E676', '#FFBF00'],
       });
-    } catch (e) {
+    } catch {
       // safe fallback
     }
 
-    // Award celebration virtual tokens
+    // Award celebration virtual tokens & increment fireworks watched statistic
     addTokens(50);
+    recordFireworksWatched();
   };
 
   if (activeModal !== 'finale') return null;

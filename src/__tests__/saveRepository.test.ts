@@ -107,4 +107,118 @@ describe('LocalSaveRepository', () => {
     const reloaded = await safeRepo.load();
     expect(reloaded.tokens).toBe(300);
   });
+
+  // --- Focused Regression Tests for Phase 5B Save-System Audit ---
+
+  it('migrates unversioned legacy save data seamlessly from legacy key', async () => {
+    // Simulate legacy storage key with unversioned payload
+    mockStorage['diwali_mela_save'] = JSON.stringify({
+      tokens: 175,
+      inventory: { items: { 'gulab_jamun': 3, 'kandil_lantern': 1 } },
+      litDiyas: ['diya_1', 'diya_2', 'diya_1'], // contains duplicate to test deduplication
+    });
+
+    const loaded = await repo.load();
+    expect(loaded.version).toBe(1);
+    expect(loaded.tokens).toBe(175);
+    expect(loaded.inventory.items['gulab_jamun']).toBe(3);
+    expect(loaded.inventory.items['kandil_lantern']).toBe(1);
+    // Deduplication verified
+    expect(loaded.litDiyas).toEqual(['diya_1', 'diya_2']);
+    // Total tokens earned populated at least equal to current tokens
+    expect(loaded.stats.totalTokensEarned).toBeGreaterThanOrEqual(175);
+    // Migrated data written to current storage key
+    expect(mockStorage['diwali_mela_save_v1']).toBeDefined();
+  });
+
+  it('repairs partial save where individual stats or settings fields are missing', async () => {
+    mockStorage['diwali_mela_save_v1'] = JSON.stringify({
+      version: 1,
+      tokens: 85,
+      inventory: { items: { 'earthen_diya': 10 } },
+      litDiyas: ['diya_a'],
+      stats: {
+        balloonHighScore: 60,
+        // missing ringTossHighScore, rangoliCompleted, fireworksWatchedCount
+      },
+      // missing settings completely
+    });
+
+    const loaded = await repo.load();
+    expect(loaded.tokens).toBe(85);
+    expect(loaded.stats.balloonHighScore).toBe(60);
+    expect(loaded.stats.ringTossHighScore).toBe(0); // filled with default
+    expect(loaded.stats.rangoliCompleted).toBe(false);
+    expect(loaded.stats.fireworksWatchedCount).toBe(0);
+    expect(loaded.stats.totalTokensEarned).toBe(85); // guaranteed >= current tokens
+    expect(loaded.settings.graphicsQuality).toBe('high');
+    expect(loaded.settings.reducedMotion).toBe(false);
+  });
+
+  it('rejects saving invalid or negative tokens and avoids corrupting storage', async () => {
+    // Valid initial save
+    await repo.save({
+      ...DEFAULT_SAVE_DATA,
+      tokens: 100,
+    });
+
+    // Attempt corrupt save with negative tokens
+    const invalidSave = {
+      ...DEFAULT_SAVE_DATA,
+      tokens: -50,
+    } as any;
+    const saveResult = await repo.save(invalidSave);
+    expect(saveResult).toBe(false);
+
+    // Reloaded data must still hold the previous valid tokens
+    const reloaded = await repo.load();
+    expect(reloaded.tokens).toBe(100);
+  });
+
+  it('ensures full progress survives save and reload cycles', async () => {
+    const complexSave: SaveDataV1 = {
+      version: 1,
+      tokens: 145,
+      inventory: {
+        items: {
+          'gulab_jamun': 4,
+          'phooljhadi': 2,
+        },
+      },
+      litDiyas: ['entrance_1', 'entrance_2', 'plaza_center'],
+      stats: {
+        balloonHighScore: 180,
+        ringTossHighScore: 90,
+        diyasLitCount: 3,
+        rangoliCompleted: true,
+        totalTokensEarned: 220,
+        fireworksWatchedCount: 2,
+      },
+      settings: {
+        graphicsQuality: 'medium',
+        masterVolume: 0.7,
+        sfxVolume: 0.9,
+        musicVolume: 0.5,
+        touchSensitivity: 1.2,
+        reducedMotion: true,
+      },
+      lastSavedAt: 1729000000000,
+    };
+
+    const saved = await repo.save(complexSave);
+    expect(saved).toBe(true);
+
+    const reloaded = await repo.load();
+    expect(reloaded.tokens).toBe(145);
+    expect(reloaded.inventory.items['phooljhadi']).toBe(2);
+    expect(reloaded.litDiyas).toEqual(['entrance_1', 'entrance_2', 'plaza_center']);
+    expect(reloaded.stats.balloonHighScore).toBe(180);
+    expect(reloaded.stats.ringTossHighScore).toBe(90);
+    expect(reloaded.stats.diyasLitCount).toBe(3);
+    expect(reloaded.stats.rangoliCompleted).toBe(true);
+    expect(reloaded.stats.totalTokensEarned).toBe(220);
+    expect(reloaded.stats.fireworksWatchedCount).toBe(2);
+    expect(reloaded.settings.reducedMotion).toBe(true);
+    expect(reloaded.settings.touchSensitivity).toBe(1.2);
+  });
 });

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { GameZone, InteractionPromptState, ShopItem, GraphicsQuality } from '../types/game';
+import type { GameZone, InteractionPromptState, ShopItem, GraphicsQuality, MiniGameStats } from '../types/game';
 import { saveRepository } from '../systems/saveRepository';
 import { soundEngine } from '../audio/soundEngine';
 
@@ -94,6 +94,7 @@ interface GameState {
   tokens: number;
   inventory: Record<string, number>;
   litDiyas: string[];
+  stats: MiniGameStats;
   activeModal: ActiveModalType;
   prompt: InteractionPromptState | null;
   balloonGame: {
@@ -126,6 +127,8 @@ interface GameState {
   addTokens: (amount: number) => void;
   purchaseItem: (itemId: string) => boolean;
   lightDiya: (diyaId: string) => void;
+  completeRangoli: () => void;
+  recordFireworksWatched: () => void;
   updateSettings: (newSettings: Partial<GameState['settings']>) => void;
   resetProgress: () => Promise<void>;
 
@@ -136,6 +139,18 @@ interface GameState {
   endBalloonGame: () => void;
 }
 
+const persistState = (current: GameState) => {
+  saveRepository.save({
+    version: 1,
+    tokens: current.tokens,
+    inventory: { items: current.inventory },
+    litDiyas: current.litDiyas,
+    stats: current.stats,
+    settings: current.settings,
+    lastSavedAt: Date.now(),
+  });
+};
+
 export const useGameStore = create<GameState>((set, get) => ({
   isLoaded: false,
   gameStarted: false,
@@ -143,6 +158,14 @@ export const useGameStore = create<GameState>((set, get) => ({
   tokens: 50,
   inventory: { 'gulab_jamun': 1, 'earthen_diya': 5 },
   litDiyas: [],
+  stats: {
+    balloonHighScore: 0,
+    ringTossHighScore: 0,
+    diyasLitCount: 0,
+    rangoliCompleted: false,
+    totalTokensEarned: 50,
+    fireworksWatchedCount: 0,
+  },
   activeModal: 'welcome',
   prompt: null,
   balloonGame: {
@@ -173,6 +196,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         tokens: data.tokens,
         inventory: data.inventory.items,
         litDiyas: data.litDiyas,
+        stats: data.stats,
         settings: data.settings,
         balloonGame: {
           score: 0,
@@ -219,40 +243,29 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   addTokens: (amount: number) => {
-    const newTokens = get().tokens + amount;
-    soundEngine.playTokenEarned();
-    set({ tokens: newTokens });
-    // persist
+    if (amount <= 0 || isNaN(amount)) return;
     const current = get();
-    saveRepository.save({
-      version: 1,
-      tokens: newTokens,
-      inventory: { items: current.inventory },
-      litDiyas: current.litDiyas,
-      stats: {
-        balloonHighScore: current.balloonGame.highScore,
-        ringTossHighScore: current.ringTossGame.highScore,
-        diyasLitCount: current.litDiyas.length,
-        rangoliCompleted: false,
-        totalTokensEarned: newTokens,
-        fireworksWatchedCount: 0,
-      },
-      settings: current.settings,
-      lastSavedAt: Date.now(),
-    });
+    const newTokens = current.tokens + amount;
+    const newStats: MiniGameStats = {
+      ...current.stats,
+      totalTokensEarned: (current.stats?.totalTokensEarned ?? current.tokens) + amount,
+    };
+    soundEngine.playTokenEarned();
+    set({ tokens: newTokens, stats: newStats });
+    persistState(get());
   },
 
   purchaseItem: (itemId: string) => {
     const item = SHOP_CATALOG.find((i) => i.id === itemId);
     if (!item) return false;
 
-    const { tokens, inventory } = get();
-    if (tokens < item.price) return false;
+    const current = get();
+    if (current.tokens < item.price) return false;
 
-    const updatedTokens = tokens - item.price;
+    const updatedTokens = current.tokens - item.price;
     const updatedInventory = {
-      ...inventory,
-      [itemId]: (inventory[itemId] || 0) + 1,
+      ...current.inventory,
+      [itemId]: (current.inventory[itemId] || 0) + 1,
     };
 
     soundEngine.playTokenEarned();
@@ -261,79 +274,69 @@ export const useGameStore = create<GameState>((set, get) => ({
       tokens: updatedTokens,
       inventory: updatedInventory,
     });
-
-    const current = get();
-    saveRepository.save({
-      version: 1,
-      tokens: updatedTokens,
-      inventory: { items: updatedInventory },
-      litDiyas: current.litDiyas,
-      stats: {
-        balloonHighScore: current.balloonGame.highScore,
-        ringTossHighScore: current.ringTossGame.highScore,
-        diyasLitCount: current.litDiyas.length,
-        rangoliCompleted: false,
-        totalTokensEarned: updatedTokens,
-        fireworksWatchedCount: 0,
-      },
-      settings: current.settings,
-      lastSavedAt: Date.now(),
-    });
-
+    persistState(get());
     return true;
   },
 
   lightDiya: (diyaId: string) => {
-    const { litDiyas } = get();
-    if (litDiyas.includes(diyaId)) return;
-
-    const updatedLit = [...litDiyas, diyaId];
-    soundEngine.playDiyaLight();
-    get().addTokens(5); // 5 virtual tokens reward for spreading light!
-
-    set({ litDiyas: updatedLit });
-
     const current = get();
-    saveRepository.save({
-      version: 1,
-      tokens: current.tokens,
-      inventory: { items: current.inventory },
+    if (current.litDiyas.includes(diyaId)) return;
+
+    const updatedLit = [...current.litDiyas, diyaId];
+    soundEngine.playDiyaLight();
+
+    // 5 virtual tokens reward for spreading light!
+    const reward = 5;
+    const updatedTokens = current.tokens + reward;
+    const updatedStats: MiniGameStats = {
+      ...current.stats,
+      diyasLitCount: updatedLit.length,
+      totalTokensEarned: (current.stats?.totalTokensEarned ?? current.tokens) + reward,
+    };
+
+    set({
+      tokens: updatedTokens,
       litDiyas: updatedLit,
-      stats: {
-        balloonHighScore: current.balloonGame.highScore,
-        ringTossHighScore: current.ringTossGame.highScore,
-        diyasLitCount: updatedLit.length,
-        rangoliCompleted: false,
-        totalTokensEarned: current.tokens,
-        fireworksWatchedCount: 0,
-      },
-      settings: current.settings,
-      lastSavedAt: Date.now(),
+      stats: updatedStats,
     });
+    persistState(get());
+  },
+
+  completeRangoli: () => {
+    const current = get();
+    if (current.stats.rangoliCompleted) return;
+
+    const reward = 25;
+    const updatedTokens = current.tokens + reward;
+    const updatedStats: MiniGameStats = {
+      ...current.stats,
+      rangoliCompleted: true,
+      totalTokensEarned: (current.stats?.totalTokensEarned ?? current.tokens) + reward,
+    };
+
+    set({
+      tokens: updatedTokens,
+      stats: updatedStats,
+    });
+    persistState(get());
+  },
+
+  recordFireworksWatched: () => {
+    const current = get();
+    const updatedStats: MiniGameStats = {
+      ...current.stats,
+      fireworksWatchedCount: (current.stats.fireworksWatchedCount || 0) + 1,
+    };
+
+    set({ stats: updatedStats });
+    persistState(get());
   },
 
   updateSettings: (newSettings) => {
     const merged = { ...get().settings, ...newSettings };
     set({ settings: merged });
     soundEngine.setVolumes(merged.masterVolume, merged.sfxVolume, merged.musicVolume);
-
-    const current = get();
-    saveRepository.save({
-      version: 1,
-      tokens: current.tokens,
-      inventory: { items: current.inventory },
-      litDiyas: current.litDiyas,
-      stats: {
-        balloonHighScore: current.balloonGame.highScore,
-        ringTossHighScore: current.ringTossGame.highScore,
-        diyasLitCount: current.litDiyas.length,
-        rangoliCompleted: false,
-        totalTokensEarned: current.tokens,
-        fireworksWatchedCount: 0,
-      },
-      settings: merged,
-      lastSavedAt: Date.now(),
-    });
+    persistState(get());
   },
 
   resetProgress: async () => {
@@ -342,10 +345,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       tokens: resetData.tokens,
       inventory: resetData.inventory.items,
       litDiyas: resetData.litDiyas,
+      stats: resetData.stats,
       settings: resetData.settings,
       balloonGame: {
         score: 0,
         timeLeft: 30,
+        isPlaying: false,
+        highScore: 0,
+      },
+      ringTossGame: {
+        score: 0,
+        ringsRemaining: 5,
         isPlaying: false,
         highScore: 0,
       },
@@ -400,33 +410,30 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   endBalloonGame: () => {
-    const { balloonGame, tokens, inventory, litDiyas, settings } = get();
-    const rewardTokens = Math.max(10, Math.floor(balloonGame.score / 2));
+    const current = get();
+    // Guard against duplicate mini-game completion events!
+    if (!current.balloonGame.isPlaying) return;
+
+    const rewardTokens = Math.max(10, Math.floor(current.balloonGame.score / 2));
     soundEngine.playTokenEarned();
+
+    const newTokens = current.tokens + rewardTokens;
+    const newHighScore = Math.max(current.balloonGame.highScore, current.balloonGame.score);
+    const updatedStats: MiniGameStats = {
+      ...current.stats,
+      balloonHighScore: newHighScore,
+      totalTokensEarned: (current.stats?.totalTokensEarned ?? current.tokens) + rewardTokens,
+    };
 
     set({
       balloonGame: {
-        ...balloonGame,
+        ...current.balloonGame,
         isPlaying: false,
+        highScore: newHighScore,
       },
-      tokens: tokens + rewardTokens,
+      tokens: newTokens,
+      stats: updatedStats,
     });
-
-    saveRepository.save({
-      version: 1,
-      tokens: tokens + rewardTokens,
-      inventory: { items: inventory },
-      litDiyas,
-      stats: {
-        balloonHighScore: balloonGame.highScore,
-        ringTossHighScore: 0,
-        diyasLitCount: litDiyas.length,
-        rangoliCompleted: false,
-        totalTokensEarned: tokens + rewardTokens,
-        fireworksWatchedCount: 0,
-      },
-      settings,
-      lastSavedAt: Date.now(),
-    });
+    persistState(get());
   },
 }));

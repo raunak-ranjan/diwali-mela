@@ -16,7 +16,7 @@ const COLORS = [
 export const RangoliEditorUI: React.FC = () => {
   const activeModal = useGameStore((s) => s.activeModal);
   const closeModal = useGameStore((s) => s.closeModal);
-  const addTokens = useGameStore((s) => s.addTokens);
+  const completeRangoli = useGameStore((s) => s.completeRangoli);
 
   const [selectedColor, setSelectedColor] = useState(COLORS[0].hex);
   // 16 petal segments in mandala
@@ -35,7 +35,7 @@ export const RangoliEditorUI: React.FC = () => {
     const allFilled = updated.every((c) => c !== '#1e293b');
     if (allFilled && !completed) {
       setCompleted(true);
-      addTokens(25); // Award 25 tokens for completing Rangoli!
+      completeRangoli(); // Award 25 tokens and record rangoliCompleted stat!
     }
   };
 
