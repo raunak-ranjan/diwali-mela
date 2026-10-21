@@ -32,6 +32,7 @@ export function App() {
     // Expose for testing & debug inspection
     if (typeof window !== 'undefined') {
       (window as any).__gameStore = useGameStore;
+      (window as any).__inputStore = useInputStore;
     }
   }, [initializeSave, setIsTouchDevice]);
 
