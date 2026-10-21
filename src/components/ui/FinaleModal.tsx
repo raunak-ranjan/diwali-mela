@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useGameStore } from '../../stores/useGameStore';
 import { soundEngine } from '../../audio/soundEngine';
 import { Sparkles, RotateCcw, X } from 'lucide-react';
@@ -13,29 +13,7 @@ export const FinaleModal: React.FC = () => {
   const [countdown, setCountdown] = useState(2);
   const [isPlayingShow, setIsPlayingShow] = useState(false);
 
-  useEffect(() => {
-    if (activeModal !== 'finale') {
-      setIsPlayingShow(false);
-      setCountdown(2);
-      return;
-    }
-
-    // Begin countdown
-    let timer = 2;
-    setCountdown(2);
-    const interval = setInterval(() => {
-      timer -= 1;
-      setCountdown(timer);
-      if (timer <= 0) {
-        clearInterval(interval);
-        triggerShow();
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [activeModal]);
-
-  const triggerShow = () => {
+  const triggerShow = useCallback(() => {
     setIsPlayingShow(true);
     soundEngine.playFireworkExplosion();
 
@@ -54,6 +32,28 @@ export const FinaleModal: React.FC = () => {
     // Award celebration virtual tokens & increment fireworks watched statistic
     addTokens(50);
     recordFireworksWatched();
+  }, [addTokens, recordFireworksWatched]);
+
+  useEffect(() => {
+    if (activeModal !== 'finale') return;
+
+    let timer = 2;
+    const interval = setInterval(() => {
+      timer -= 1;
+      setCountdown(timer);
+      if (timer <= 0) {
+        clearInterval(interval);
+        triggerShow();
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [activeModal, triggerShow]);
+
+  const handleClose = () => {
+    setIsPlayingShow(false);
+    setCountdown(2);
+    closeModal();
   };
 
   if (activeModal !== 'finale') return null;
@@ -63,7 +63,7 @@ export const FinaleModal: React.FC = () => {
       <div className="relative max-w-lg w-full bg-gradient-to-b from-festive-nightBlue via-slate-950 to-festive-deepNavy border-2 border-festive-gold rounded-3xl shadow-2xl p-6 text-center text-white overflow-hidden">
         {/* Close Button */}
         <button
-          onClick={closeModal}
+          onClick={handleClose}
           className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-gray-300 hover:text-white cursor-pointer z-10"
         >
           <X className="w-4 h-4" />
@@ -110,7 +110,7 @@ export const FinaleModal: React.FC = () => {
                 <span>Replay Fireworks</span>
               </button>
               <button
-                onClick={closeModal}
+                onClick={handleClose}
                 className="py-2.5 px-6 rounded-xl bg-gradient-to-r from-festive-gold to-festive-saffron text-amber-950 font-bold text-xs hover:brightness-110 active:scale-95 transition-all cursor-pointer shadow-lg"
               >
                 Continue Exploring Mela

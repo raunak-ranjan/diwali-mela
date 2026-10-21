@@ -1,13 +1,23 @@
 import React, { useMemo } from 'react';
 
+// Deterministic seeded random number generator for stable celestial stars
+const createSeededRandom = (seed: number) => {
+  let s = seed;
+  return () => {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+};
+
 export const GroundAndSky: React.FC = () => {
-  // Generate procedural starry night sky points
+  // Generate deterministic starry night sky points
   const starsData = useMemo(() => {
     const coords = new Float32Array(500 * 3);
+    const rand = createSeededRandom(42);
     for (let i = 0; i < 500; i++) {
-      const radius = 80 + Math.random() * 30;
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(Math.random() * 0.8 + 0.2); // Upper dome only
+      const radius = 80 + rand() * 30;
+      const theta = rand() * Math.PI * 2;
+      const phi = Math.acos(rand() * 0.8 + 0.2); // Upper dome only
 
       coords[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
       coords[i * 3 + 1] = radius * Math.cos(phi);

@@ -239,7 +239,6 @@ class FestiveSoundEngine {
     // Raag scale frequencies (Sa Re Ga Ma Pa Dha Ni Sa in C)
     const scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
 
-    let noteIndex = 0;
     const playNote = () => {
       if (!this.isMusicPlaying || !this.ctx || this.isMuted) return;
 
@@ -262,7 +261,6 @@ class FestiveSoundEngine {
       osc.start(now);
       osc.stop(now + 1.3);
 
-      noteIndex++;
       const nextDelay = 350 + Math.random() * 400;
       this.musicInterval = setTimeout(playNote, nextDelay);
     };
