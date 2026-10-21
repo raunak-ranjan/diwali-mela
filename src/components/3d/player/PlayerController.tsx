@@ -31,6 +31,17 @@ export const PlayerController = () => {
   // Smoothed speed magnitude for camera FOV breathing
   const smoothSpeed = useRef(0);
 
+  // Expose positioning for automated audit & testing inspection
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__teleportPlayer = (x: number, y: number, z: number, newYaw?: number, newPitch?: number) => {
+        pos.current.set(x, y, z);
+        if (newYaw !== undefined) yaw.current = newYaw;
+        if (newPitch !== undefined) pitch.current = newPitch;
+      };
+    }
+  }, []);
+
   // Keyboard events
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

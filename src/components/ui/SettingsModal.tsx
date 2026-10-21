@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGameStore } from '../../stores/useGameStore';
-import { Settings, Volume2, Monitor, Trash2, X } from 'lucide-react';
+import { Settings, Volume2, Monitor, Trash2, X, Eye } from 'lucide-react';
 import type { GraphicsQuality } from '../../types/game';
 
 export const SettingsModal: React.FC = () => {
@@ -100,6 +100,35 @@ export const SettingsModal: React.FC = () => {
               onChange={(e) => updateSettings({ touchSensitivity: parseFloat(e.target.value) })}
               className="w-full accent-festive-gold cursor-pointer"
             />
+          </div>
+
+          {/* Reduced Motion Toggle */}
+          <div className="pt-2 border-t border-slate-800">
+            <div className="flex items-center justify-between font-bold text-gray-300 py-1">
+              <span className="flex items-center gap-1.5">
+                <Eye className="w-4 h-4 text-festive-gold" />
+                <span>Reduced Motion</span>
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={settings.reducedMotion}
+                aria-label="Reduced Motion"
+                onClick={() => updateSettings({ reducedMotion: !settings.reducedMotion })}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer ${
+                  settings.reducedMotion ? 'bg-festive-gold' : 'bg-slate-700'
+                }`}
+              >
+                <div
+                  className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                    settings.reducedMotion ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+            <div className="text-[10px] text-gray-400 mt-0.5">
+              Softens fireworks speed and disables pendulum oscillations for visual comfort.
+            </div>
           </div>
 
           {/* Reset Save Progress */}
