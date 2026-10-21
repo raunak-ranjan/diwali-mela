@@ -38,8 +38,28 @@ export const DEFAULT_SAVE_DATA: SaveDataV1 = {
 const STORAGE_KEY = 'diwali_mela_save_v1';
 
 export class LocalSaveRepository implements ISaveRepository {
+  private memoryFallback: SaveDataV1 | null = null;
+
+  private isStorageAvailable(): boolean {
+    try {
+      if (typeof window === 'undefined' || !window.localStorage) return false;
+      const testKey = '__diwali_storage_probe__';
+      window.localStorage.setItem(testKey, '1');
+      window.localStorage.removeItem(testKey);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async load(): Promise<SaveDataV1> {
     try {
+      if (!this.isStorageAvailable()) {
+        return this.memoryFallback
+          ? JSON.parse(JSON.stringify(this.memoryFallback))
+          : this.getDefault();
+      }
+
       const serialized = localStorage.getItem(STORAGE_KEY);
       if (!serialized) {
         return this.getDefault();
@@ -54,7 +74,9 @@ export class LocalSaveRepository implements ISaveRepository {
       return parsed as SaveDataV1;
     } catch (err) {
       console.error('[SaveRepository] Error loading save data from localStorage:', err);
-      return this.getDefault();
+      return this.memoryFallback
+        ? JSON.parse(JSON.stringify(this.memoryFallback))
+        : this.getDefault();
     }
   }
 
@@ -67,7 +89,11 @@ export class LocalSaveRepository implements ISaveRepository {
         ...data,
         lastSavedAt: Date.now(),
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataWithTimestamp));
+      this.memoryFallback = JSON.parse(JSON.stringify(dataWithTimestamp));
+
+      if (this.isStorageAvailable()) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dataWithTimestamp));
+      }
       return true;
     } catch (err) {
       console.error('[SaveRepository] Error writing save data:', err);

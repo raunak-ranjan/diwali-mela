@@ -80,4 +80,31 @@ describe('LocalSaveRepository', () => {
     const reloaded = await repo.load();
     expect(reloaded.tokens).toBe(DEFAULT_SAVE_DATA.tokens);
   });
+
+  it('safely falls back to in-memory storage when localStorage is disabled or throws', async () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => {
+        throw new Error('SecurityError: The operation is insecure.');
+      },
+      setItem: () => {
+        throw new Error('SecurityError: The operation is insecure.');
+      },
+      removeItem: () => {
+        throw new Error('SecurityError: The operation is insecure.');
+      },
+    });
+
+    const safeRepo = new LocalSaveRepository();
+    const data = await safeRepo.load();
+    expect(data.tokens).toBe(50);
+
+    const saved = await safeRepo.save({
+      ...data,
+      tokens: 300,
+    });
+    expect(saved).toBe(true);
+
+    const reloaded = await safeRepo.load();
+    expect(reloaded.tokens).toBe(300);
+  });
 });

@@ -167,27 +167,33 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   initializeSave: async () => {
-    const data = await saveRepository.load();
-    set({
-      tokens: data.tokens,
-      inventory: data.inventory.items,
-      litDiyas: data.litDiyas,
-      settings: data.settings,
-      balloonGame: {
-        score: 0,
-        timeLeft: 30,
-        isPlaying: false,
-        highScore: data.stats.balloonHighScore || 0,
-      },
-      ringTossGame: {
-        score: 0,
-        ringsRemaining: 5,
-        isPlaying: false,
-        highScore: data.stats.ringTossHighScore || 0,
-      },
-      isLoaded: true,
-    });
-    soundEngine.setVolumes(data.settings.masterVolume, data.settings.sfxVolume, data.settings.musicVolume);
+    try {
+      const data = await saveRepository.load();
+      set({
+        tokens: data.tokens,
+        inventory: data.inventory.items,
+        litDiyas: data.litDiyas,
+        settings: data.settings,
+        balloonGame: {
+          score: 0,
+          timeLeft: 30,
+          isPlaying: false,
+          highScore: data.stats.balloonHighScore || 0,
+        },
+        ringTossGame: {
+          score: 0,
+          ringsRemaining: 5,
+          isPlaying: false,
+          highScore: data.stats.ringTossHighScore || 0,
+        },
+        isLoaded: true,
+      });
+      soundEngine.setVolumes(data.settings.masterVolume, data.settings.sfxVolume, data.settings.musicVolume);
+    } catch (err) {
+      console.error('[GameStore] Error during initializeSave, falling back safely:', err);
+      // Ensure application never hangs indefinitely
+      set({ isLoaded: true });
+    }
   },
 
   startGame: () => {

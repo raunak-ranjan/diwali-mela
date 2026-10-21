@@ -1,23 +1,39 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { MelaScene } from './components/3d/MelaScene';
 import { HUD } from './components/ui/HUD';
 import { WelcomeScreen } from './components/ui/WelcomeScreen';
 import { VirtualJoystick } from './components/ui/VirtualJoystick';
 import { InteractionPrompt } from './components/ui/InteractionPrompt';
-import { BalloonShootingUI } from './components/ui/MiniGameOverlays/BalloonShootingUI';
-import { StallsShopModal } from './components/ui/StallsShopModal';
-import { RangoliEditorUI } from './components/ui/RangoliEditorUI';
-import { FinaleModal } from './components/ui/FinaleModal';
-import { SettingsModal } from './components/ui/SettingsModal';
-import { PauseMenu } from './components/ui/PauseMenu';
+import { LoadingScreen } from './components/ui/LoadingScreen';
 import { useGameStore } from './stores/useGameStore';
 import { useInputStore } from './stores/useInputStore';
+
+// Code-split heavy interactive modals & mini-games to minimize initial JS bundle
+const BalloonShootingUI = lazy(() =>
+  import('./components/ui/MiniGameOverlays/BalloonShootingUI').then((m) => ({ default: m.BalloonShootingUI }))
+);
+const StallsShopModal = lazy(() =>
+  import('./components/ui/StallsShopModal').then((m) => ({ default: m.StallsShopModal }))
+);
+const RangoliEditorUI = lazy(() =>
+  import('./components/ui/RangoliEditorUI').then((m) => ({ default: m.RangoliEditorUI }))
+);
+const FinaleModal = lazy(() =>
+  import('./components/ui/FinaleModal').then((m) => ({ default: m.FinaleModal }))
+);
+const SettingsModal = lazy(() =>
+  import('./components/ui/SettingsModal').then((m) => ({ default: m.SettingsModal }))
+);
+const PauseMenu = lazy(() =>
+  import('./components/ui/PauseMenu').then((m) => ({ default: m.PauseMenu }))
+);
 
 export function App() {
   const initializeSave = useGameStore((s) => s.initializeSave);
   const isLoaded = useGameStore((s) => s.isLoaded);
   const quality = useGameStore((s) => s.settings.graphicsQuality);
+  const isTouchDevice = useInputStore((s) => s.isTouchDevice);
   const setIsTouchDevice = useInputStore((s) => s.setIsTouchDevice);
 
   useEffect(() => {
@@ -34,23 +50,27 @@ export function App() {
   }, [initializeSave, setIsTouchDevice]);
 
   if (!isLoaded) {
-    return (
-      <div className="fixed inset-0 bg-[#060913] flex flex-col items-center justify-center text-white p-4">
-        <div className="text-4xl animate-bounce mb-3">🪔</div>
-        <div className="text-lg font-bold text-festive-gold">Igniting Diwali Mela...</div>
-        <div className="text-xs text-amber-200/60 mt-1">Lighting hundreds of golden diyas</div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
-  const dpr = quality === 'high' ? [1, 2] : quality === 'medium' ? [1, 1.5] : [1, 1];
+  // Device-aware responsive pixel ratio: mobile caps at 1.5 to protect battery and fill-rate
+  const maxDpr = isTouchDevice
+    ? quality === 'high'
+      ? 1.5
+      : 1.0
+    : quality === 'high'
+    ? 2.0
+    : quality === 'medium'
+    ? 1.5
+    : 1.0;
+  const dpr: [number, number] = [1, maxDpr];
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-[#060913]">
       {/* 3D WebGL Canvas */}
       <Canvas
         shadows={quality !== 'low'}
-        dpr={dpr as any}
+        dpr={dpr}
         camera={{ position: [0, 3, -13], fov: 60 }}
         gl={{
           antialias: quality !== 'low',
@@ -66,14 +86,18 @@ export function App() {
       <VirtualJoystick />
       <InteractionPrompt />
 
-      {/* Interactive Modals & Mini-Games */}
+      {/* Immediate Welcome Screen */}
       <WelcomeScreen />
-      <BalloonShootingUI />
-      <StallsShopModal />
-      <RangoliEditorUI />
-      <FinaleModal />
-      <SettingsModal />
-      <PauseMenu />
+
+      {/* Lazy Loaded Interactive Modals & Mini-Games */}
+      <Suspense fallback={null}>
+        <BalloonShootingUI />
+        <StallsShopModal />
+        <RangoliEditorUI />
+        <FinaleModal />
+        <SettingsModal />
+        <PauseMenu />
+      </Suspense>
     </div>
   );
 }
