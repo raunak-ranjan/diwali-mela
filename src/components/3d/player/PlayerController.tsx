@@ -22,6 +22,15 @@ export const PlayerController = () => {
   const pitch = useRef(0.12); // Subtle natural camera tilt towards the fairground horizon
   const targetCamPos = useRef(new THREE.Vector3(0, 2.3, -25));
 
+  // Smooth movement: velocity accumulator for acceleration/deceleration
+  const velocity = useRef(new THREE.Vector3());
+  // Head-bob accumulator
+  const bobPhase = useRef(0);
+  // Track whether player was moving last frame for bob reset
+  const wasMoving = useRef(false);
+  // Smoothed speed magnitude for camera FOV breathing
+  const smoothSpeed = useRef(0);
+
   // Keyboard events
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -114,8 +123,11 @@ export const PlayerController = () => {
   useFrame((_, delta) => {
     if (activeModal !== 'none') return;
 
+    const safeDelta = Math.min(delta, 0.05);
     const input = useInputStore.getState();
-    const moveSpeed = 7.0;
+    const maxSpeed = 7.0;
+    // How fast velocity ramps up and down (higher = snappier, lower = floatier)
+    const accelFactor = 14.0;
 
     // Incorporate touch look delta from mobile gestures
     if (input.touchLookDelta.x !== 0 || input.touchLookDelta.y !== 0) {
@@ -128,7 +140,7 @@ export const PlayerController = () => {
       input.resetTouchLookDelta();
     }
 
-    // Direction vector relative to camera yaw
+    // Desired movement direction relative to camera yaw
     let forwardInput = (input.forward ? 1 : 0) - (input.backward ? 1 : 0);
     let rightInput = (input.right ? 1 : 0) - (input.left ? 1 : 0);
 
@@ -138,29 +150,59 @@ export const PlayerController = () => {
       forwardInput -= input.joystickVector.y;
     }
 
-    const moveDir = new THREE.Vector3();
+    // Build desired velocity vector in world space
+    const desiredVel = new THREE.Vector3();
     if (forwardInput !== 0 || rightInput !== 0) {
-      // Forward relative to camera heading (+Z into the fairground)
       const camForward = new THREE.Vector3(Math.sin(yaw.current), 0, Math.cos(yaw.current)).normalize();
       const camRight = new THREE.Vector3(Math.cos(yaw.current), 0, -Math.sin(yaw.current)).normalize();
 
-      moveDir.addScaledVector(camForward, forwardInput);
-      moveDir.addScaledVector(camRight, rightInput);
-      if (moveDir.lengthSq() > 1) moveDir.normalize();
+      desiredVel.addScaledVector(camForward, forwardInput);
+      desiredVel.addScaledVector(camRight, rightInput);
+      if (desiredVel.lengthSq() > 1) desiredVel.normalize();
+      desiredVel.multiplyScalar(maxSpeed);
+    }
+    // desiredVel is zero when no input → velocity decelerates to zero
 
-      // Smooth rotate avatar to face movement direction
-      if (avatarMeshRef.current) {
-        const targetRot = Math.atan2(moveDir.x, moveDir.z);
-        avatarMeshRef.current.rotation.y = THREE.MathUtils.lerp(
-          avatarMeshRef.current.rotation.y,
-          targetRot,
-          delta * 14
-        );
-      }
+    // Lerp current velocity toward desired (smooth acceleration & deceleration)
+    velocity.current.lerp(desiredVel, 1 - Math.exp(-accelFactor * safeDelta));
+
+    const currentSpeedSq = velocity.current.lengthSq();
+    const isMoving = currentSpeedSq > 0.01;
+
+    // Smooth speed magnitude for FOV breathing and bob
+    smoothSpeed.current = THREE.MathUtils.lerp(
+      smoothSpeed.current,
+      isMoving ? velocity.current.length() / maxSpeed : 0,
+      1 - Math.exp(-8 * safeDelta)
+    );
+
+    // Smooth rotate avatar to face movement direction when moving
+    if (isMoving && avatarMeshRef.current) {
+      const targetRot = Math.atan2(velocity.current.x, velocity.current.z);
+      avatarMeshRef.current.rotation.y = THREE.MathUtils.lerp(
+        avatarMeshRef.current.rotation.y,
+        targetRot,
+        1 - Math.exp(-14 * safeDelta)
+      );
     }
 
-    // Target displacement
-    const targetPos = pos.current.clone().addScaledVector(moveDir, moveSpeed * delta);
+    // Head-bob: advance phase only while moving
+    if (isMoving) {
+      // Bob frequency ~2.5 Hz at full speed
+      bobPhase.current += safeDelta * 2.5 * Math.PI * 2 * smoothSpeed.current;
+      wasMoving.current = true;
+    } else if (wasMoving.current) {
+      // Ease bob back to zero when player stops
+      bobPhase.current = THREE.MathUtils.lerp(bobPhase.current, Math.round(bobPhase.current / Math.PI) * Math.PI, 1 - Math.exp(-8 * safeDelta));
+      if (Math.abs(Math.sin(bobPhase.current)) < 0.02) {
+        bobPhase.current = 0;
+        wasMoving.current = false;
+      }
+    }
+    const bobOffset = Math.sin(bobPhase.current) * 0.038 * smoothSpeed.current;
+
+    // Apply velocity to position
+    const targetPos = pos.current.clone().addScaledVector(velocity.current, safeDelta);
 
     // Collision detection & sliding
     const resolved = collisionSystem.resolveMovement(pos.current, targetPos, 0.45);
@@ -170,17 +212,35 @@ export const PlayerController = () => {
       playerRef.current.position.copy(pos.current);
     }
 
-    // Smooth Third-Person Camera Follow (behind player looking forward into fairground)
+    // ── Camera ──────────────────────────────────────────────────────────────
     const camDist = 4.8;
     const camHeight = 1.9 + pitch.current * 1.5;
     targetCamPos.current.set(
       pos.current.x - Math.sin(yaw.current) * camDist,
-      pos.current.y + camHeight,
+      pos.current.y + camHeight + bobOffset * 0.3, // camera bobs very slightly less than head
       pos.current.z - Math.cos(yaw.current) * camDist
     );
 
-    camera.position.lerp(targetCamPos.current, delta * 8);
-    camera.lookAt(pos.current.x, pos.current.y + 1.2, pos.current.z + 1.5);
+    // Slightly slower spring for a weighty, cinematic follow feel
+    camera.position.lerp(targetCamPos.current, 1 - Math.exp(-6 * safeDelta));
+
+    // Camera lookAt leads slightly ahead of player in movement direction for better anticipation
+    const lookAheadDist = 1.4 * smoothSpeed.current;
+    const lookTarget = new THREE.Vector3(
+      pos.current.x + Math.sin(yaw.current) * lookAheadDist,
+      pos.current.y + 1.2 + bobOffset * 0.5,
+      pos.current.z + Math.cos(yaw.current) * lookAheadDist + 1.5
+    );
+    camera.lookAt(lookTarget);
+
+    // FOV breathing: expand slightly when moving at full speed (+4°), contract at rest
+    const perspCam = camera as THREE.PerspectiveCamera;
+    if (perspCam.isPerspectiveCamera) {
+      const targetFov = 60 + smoothSpeed.current * 4;
+      perspCam.fov = THREE.MathUtils.lerp(perspCam.fov, targetFov, 1 - Math.exp(-4 * safeDelta));
+      perspCam.updateProjectionMatrix();
+    }
+    // ── End Camera ─────────────────────────────────────────────────────────
 
     // Interaction Proximity Check
     const nearest = interactionRegistry.findNearest(pos.current);
@@ -208,6 +268,7 @@ export const PlayerController = () => {
   return (
     <group ref={playerRef} position={[0, 0, -20]}>
       {/* 3D Festive Avatar (Festive Kurta & Dupatta/Scarf) */}
+      {/* avatarMeshRef handles rotation; the inner group applies head-bob Y offset */}
       <group ref={avatarMeshRef} position={[0, 0, 0]}>
         {/* Head */}
         <mesh position={[0, 1.45, 0]} castShadow>
