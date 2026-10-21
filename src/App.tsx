@@ -12,6 +12,7 @@ import { RangoliEditorUI } from './components/ui/RangoliEditorUI';
 import { FinaleModal } from './components/ui/FinaleModal';
 import { SettingsModal } from './components/ui/SettingsModal';
 import { PauseMenu } from './components/ui/PauseMenu';
+import { RewardsProgressionModal } from './components/ui/RewardsProgressionModal';
 import { useGameStore } from './stores/useGameStore';
 import { useInputStore } from './stores/useInputStore';
 
@@ -86,6 +87,7 @@ export function App() {
       <FinaleModal />
       <SettingsModal />
       <PauseMenu />
+      <RewardsProgressionModal />
     </div>
   );
 }

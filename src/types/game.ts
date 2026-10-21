@@ -1,3 +1,5 @@
+import type { PlayerCosmetics, TokenTransaction } from './rewards';
+
 export type GraphicsQuality = 'low' | 'medium' | 'high';
 
 export type GameZone = 
@@ -63,6 +65,8 @@ export interface SaveDataV1 {
   stats: MiniGameStats;
   litDiyas: string[];
   quest?: QuestProgress;
+  cosmetics?: PlayerCosmetics;
+  tokenHistory?: TokenTransaction[];
   settings: {
     graphicsQuality: GraphicsQuality;
     masterVolume: number;

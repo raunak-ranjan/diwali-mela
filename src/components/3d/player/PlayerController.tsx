@@ -5,6 +5,7 @@ import { useGameStore } from '../../../stores/useGameStore';
 import { useInputStore } from '../../../stores/useInputStore';
 import { collisionSystem } from '../../../systems/collision';
 import { interactionRegistry } from '../../../systems/interactionRegistry';
+import { PlayerCosmetics } from './PlayerCosmetics';
 
 export const PlayerController = () => {
   const { camera } = useThree();
@@ -359,6 +360,9 @@ export const PlayerController = () => {
           decay={1.2}
         />
       </group>
+
+      {/* Active Unlocked Cosmetic Effect */}
+      <PlayerCosmetics />
     </group>
   );
 };

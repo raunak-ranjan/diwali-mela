@@ -333,6 +333,80 @@ class FestiveSoundEngine {
     playNote();
   }
 
+  /**
+   * Sound effect: Equip/unequip cosmetic item - soft melodic bell tone
+   */
+  public playEquipSound() {
+    if (!this.ctx || this.isMuted) return;
+    this.resume();
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(523.25, now); // C5
+    osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.12); // G5
+
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+    osc.connect(gain);
+    gain.connect(this.sfxGain!);
+
+    osc.start(now);
+    osc.stop(now + 0.38);
+  }
+
+  /**
+   * Sound effect: Purchase cosmetic unlock - celebratory bright double chime
+   */
+  public playPurchaseSuccess() {
+    if (!this.ctx || this.isMuted) return;
+    this.resume();
+    const now = this.ctx.currentTime;
+    const notes = [587.33, 880.00, 1174.66]; // D5, A5, D6
+    notes.forEach((freq, idx) => {
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.07);
+
+      gain.gain.setValueAtTime(0.22, now + idx * 0.07);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.07 + 0.45);
+
+      osc.connect(gain);
+      gain.connect(this.sfxGain!);
+
+      osc.start(now + idx * 0.07);
+      osc.stop(now + idx * 0.07 + 0.5);
+    });
+  }
+
+  /**
+   * Sound effect: Action rejected (e.g. insufficient funds) - gentle low double thud
+   */
+  public playErrorSound() {
+    if (!this.ctx || this.isMuted) return;
+    this.resume();
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(220, now); // A3
+    osc.frequency.setValueAtTime(180, now + 0.08);
+
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+    osc.connect(gain);
+    gain.connect(this.sfxGain!);
+
+    osc.start(now);
+    osc.stop(now + 0.28);
+  }
+
   public stopFestiveMusic() {
     this.isMusicPlaying = false;
     if (this.musicInterval) {

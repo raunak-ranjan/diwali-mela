@@ -1,4 +1,5 @@
 import type { SaveDataV1, MiniGameStats } from '../types/game';
+import { KNOWN_COSMETIC_IDS, type TokenTransaction } from '../types/rewards';
 
 export interface ISaveRepository {
   load(): Promise<SaveDataV1>;
@@ -30,6 +31,18 @@ export const DEFAULT_SAVE_DATA: SaveDataV1 = {
     collectedDiyas: [],
     isCompleted: false,
   },
+  cosmetics: {
+    unlocked: [],
+    equipped: null,
+  },
+  tokenHistory: [
+    {
+      id: 'welcome_gift',
+      amount: 50,
+      source: 'Festival Welcome Gift',
+      timestamp: Date.now(),
+    },
+  ],
   settings: {
     graphicsQuality: 'high',
     masterVolume: 0.8,
@@ -186,6 +199,12 @@ export class LocalSaveRepository implements ISaveRepository {
       if (!data.quest || typeof data.quest !== 'object') return false;
       if (!Array.isArray(data.quest.collectedDiyas)) return false;
     }
+    if (data.cosmetics !== undefined) {
+      if (!data.cosmetics || typeof data.cosmetics !== 'object') return false;
+      if (!Array.isArray(data.cosmetics.unlocked)) return false;
+      if (data.cosmetics.equipped !== null && typeof data.cosmetics.equipped !== 'string') return false;
+    }
+    if (data.tokenHistory !== undefined && !Array.isArray(data.tokenHistory)) return false;
     return true;
   }
 
@@ -261,6 +280,38 @@ export class LocalSaveRepository implements ISaveRepository {
       : quest.collectedDiyas.length;
     stats.questCompleted = quest.isCompleted;
 
+    // Sanitize cosmetics
+    const rawCosmetics = data.cosmetics && typeof data.cosmetics === 'object' ? data.cosmetics : {};
+    const unlocked: string[] = Array.isArray(rawCosmetics.unlocked)
+      ? Array.from(new Set(rawCosmetics.unlocked.filter((id: unknown): id is string => typeof id === 'string' && (KNOWN_COSMETIC_IDS as readonly string[]).includes(id))))
+      : defaultSave.cosmetics?.unlocked || [];
+    const rawEquipped = typeof rawCosmetics.equipped === 'string' ? rawCosmetics.equipped : null;
+    const equipped = rawEquipped && unlocked.includes(rawEquipped) ? rawEquipped : null;
+    const cosmetics = {
+      unlocked,
+      equipped,
+    };
+
+    // Sanitize token history
+    const rawHistory = Array.isArray(data.tokenHistory) ? data.tokenHistory : [];
+    const tokenHistory: TokenTransaction[] = rawHistory
+      .filter((t: any) => t && typeof t === 'object' && typeof t.amount === 'number' && !isNaN(t.amount) && typeof t.source === 'string')
+      .slice(-20)
+      .map((t: any) => ({
+        id: typeof t.id === 'string' ? t.id : `tx_${Date.now()}_${Math.random()}`,
+        amount: t.amount,
+        source: t.source,
+        timestamp: typeof t.timestamp === 'number' ? t.timestamp : Date.now(),
+      }));
+    if (tokenHistory.length === 0) {
+      tokenHistory.push({
+        id: 'welcome_gift',
+        amount: tokens,
+        source: 'Festival Welcome Gift',
+        timestamp: typeof data.lastSavedAt === 'number' ? data.lastSavedAt : Date.now(),
+      });
+    }
+
     // Sanitize settings
     const rawSettings = (data.settings && typeof data.settings === 'object') ? data.settings : {};
     const settings = {
@@ -275,6 +326,8 @@ export class LocalSaveRepository implements ISaveRepository {
       litDiyas,
       stats,
       quest,
+      cosmetics,
+      tokenHistory,
       settings,
       lastSavedAt: typeof data.lastSavedAt === 'number' ? data.lastSavedAt : Date.now(),
     };

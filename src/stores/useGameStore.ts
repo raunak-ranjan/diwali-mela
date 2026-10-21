@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { GameZone, InteractionPromptState, ShopItem, GraphicsQuality, MiniGameStats, QuestNotification } from '../types/game';
+import { KNOWN_COSMETICS, type PlayerCosmetics, type TokenTransaction } from '../types/rewards';
 import { saveRepository } from '../systems/saveRepository';
 import { soundEngine } from '../audio/soundEngine';
 
@@ -85,7 +86,8 @@ export type ActiveModalType =
   | 'rangoli'
   | 'finale'
   | 'settings'
-  | 'pause';
+  | 'pause'
+  | 'rewards';
 
 interface GameState {
   isLoaded: boolean;
@@ -95,6 +97,9 @@ interface GameState {
   inventory: Record<string, number>;
   litDiyas: string[];
   stats: MiniGameStats;
+  cosmetics: PlayerCosmetics;
+  tokenHistory: TokenTransaction[];
+  recentTokenDelta: { amount: number; id: string } | null;
   activeModal: ActiveModalType;
   prompt: InteractionPromptState | null;
   quest: {
@@ -134,8 +139,11 @@ interface GameState {
   setPrompt: (prompt: InteractionPromptState | null) => void;
   openModal: (modal: ActiveModalType) => void;
   closeModal: () => void;
-  addTokens: (amount: number) => void;
+  addTokens: (amount: number, source?: string) => void;
   purchaseItem: (itemId: string) => boolean;
+  unlockCosmetic: (cosmeticId: string) => boolean;
+  equipCosmetic: (cosmeticId: string | null) => boolean;
+  dismissTokenDelta: () => void;
   lightDiya: (diyaId: string) => void;
   completeRangoli: () => void;
   collectMagicalDiya: (diyaId: string, diyaName?: string) => boolean;
@@ -162,6 +170,8 @@ const persistState = (current: GameState) => {
       collectedDiyas: current.quest.collectedDiyas,
       isCompleted: current.quest.isCompleted,
     },
+    cosmetics: current.cosmetics,
+    tokenHistory: current.tokenHistory,
     settings: current.settings,
     lastSavedAt: Date.now(),
   });
@@ -184,6 +194,19 @@ export const useGameStore = create<GameState>((set, get) => ({
     magicalDiyasCollected: 0,
     questCompleted: false,
   },
+  cosmetics: {
+    unlocked: [],
+    equipped: null,
+  },
+  tokenHistory: [
+    {
+      id: 'welcome_gift',
+      amount: 50,
+      source: 'Festival Welcome Gift',
+      timestamp: Date.now(),
+    },
+  ],
+  recentTokenDelta: null,
   activeModal: 'welcome',
   prompt: null,
   quest: {
@@ -225,6 +248,17 @@ export const useGameStore = create<GameState>((set, get) => ({
         inventory: data.inventory.items,
         litDiyas: data.litDiyas,
         stats: data.stats,
+        cosmetics: data.cosmetics || { unlocked: [], equipped: null },
+        tokenHistory: data.tokenHistory && data.tokenHistory.length > 0
+          ? data.tokenHistory
+          : [
+              {
+                id: 'welcome_gift',
+                amount: data.tokens,
+                source: 'Festival Welcome Gift',
+                timestamp: Date.now(),
+              },
+            ],
         settings: data.settings,
         quest: {
           id: 'five_sacred_diyas',
@@ -279,7 +313,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ activeModal: 'none' });
   },
 
-  addTokens: (amount: number) => {
+  addTokens: (amount: number, source: string = 'Festival Activity') => {
     if (amount <= 0 || isNaN(amount)) return;
     const current = get();
     const newTokens = current.tokens + amount;
@@ -287,8 +321,23 @@ export const useGameStore = create<GameState>((set, get) => ({
       ...current.stats,
       totalTokensEarned: (current.stats?.totalTokensEarned ?? current.tokens) + amount,
     };
+    const updatedHistory: TokenTransaction[] = [
+      ...current.tokenHistory,
+      {
+        id: `tx_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        amount,
+        source,
+        timestamp: Date.now(),
+      },
+    ].slice(-20);
+
     soundEngine.playTokenEarned();
-    set({ tokens: newTokens, stats: newStats });
+    set({
+      tokens: newTokens,
+      stats: newStats,
+      tokenHistory: updatedHistory,
+      recentTokenDelta: { amount, id: String(Date.now()) },
+    });
     persistState(get());
   },
 
@@ -304,15 +353,91 @@ export const useGameStore = create<GameState>((set, get) => ({
       ...current.inventory,
       [itemId]: (current.inventory[itemId] || 0) + 1,
     };
+    const updatedHistory: TokenTransaction[] = [
+      ...current.tokenHistory,
+      {
+        id: `spend_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        amount: -item.price,
+        source: `Bought ${item.name}`,
+        timestamp: Date.now(),
+      },
+    ].slice(-20);
 
     soundEngine.playTokenEarned();
 
     set({
       tokens: updatedTokens,
       inventory: updatedInventory,
+      tokenHistory: updatedHistory,
+      recentTokenDelta: { amount: -item.price, id: String(Date.now()) },
     });
     persistState(get());
     return true;
+  },
+
+  unlockCosmetic: (cosmeticId: string) => {
+    const item = KNOWN_COSMETICS.find((c) => c.id === cosmeticId);
+    if (!item) return false;
+
+    const current = get();
+    // Prevent duplicate purchases
+    if (current.cosmetics.unlocked.includes(cosmeticId)) return false;
+
+    // Check balance sufficiency
+    if (current.tokens < item.price) {
+      soundEngine.playErrorSound();
+      return false;
+    }
+
+    const updatedTokens = current.tokens - item.price;
+    const updatedUnlocked = [...current.cosmetics.unlocked, cosmeticId];
+    // Auto-equip if no cosmetic is currently equipped
+    const equipped = current.cosmetics.equipped ?? cosmeticId;
+
+    const updatedHistory: TokenTransaction[] = [
+      ...current.tokenHistory,
+      {
+        id: `cosmetic_${cosmeticId}_${Date.now()}`,
+        amount: -item.price,
+        source: `Unlocked ${item.name}`,
+        timestamp: Date.now(),
+      },
+    ].slice(-20);
+
+    soundEngine.playPurchaseSuccess();
+
+    set({
+      tokens: updatedTokens,
+      cosmetics: {
+        unlocked: updatedUnlocked,
+        equipped,
+      },
+      tokenHistory: updatedHistory,
+      recentTokenDelta: { amount: -item.price, id: String(Date.now()) },
+    });
+    persistState(get());
+    return true;
+  },
+
+  equipCosmetic: (cosmeticId: string | null) => {
+    const current = get();
+    if (cosmeticId !== null && !current.cosmetics.unlocked.includes(cosmeticId)) {
+      return false;
+    }
+
+    soundEngine.playEquipSound();
+    set({
+      cosmetics: {
+        ...current.cosmetics,
+        equipped: cosmeticId,
+      },
+    });
+    persistState(get());
+    return true;
+  },
+
+  dismissTokenDelta: () => {
+    set({ recentTokenDelta: null });
   },
 
   lightDiya: (diyaId: string) => {
@@ -330,11 +455,22 @@ export const useGameStore = create<GameState>((set, get) => ({
       diyasLitCount: updatedLit.length,
       totalTokensEarned: (current.stats?.totalTokensEarned ?? current.tokens) + reward,
     };
+    const updatedHistory: TokenTransaction[] = [
+      ...current.tokenHistory,
+      {
+        id: `diya_${diyaId}_${Date.now()}`,
+        amount: reward,
+        source: 'Diya Kindled',
+        timestamp: Date.now(),
+      },
+    ].slice(-20);
 
     set({
       tokens: updatedTokens,
       litDiyas: updatedLit,
       stats: updatedStats,
+      tokenHistory: updatedHistory,
+      recentTokenDelta: { amount: reward, id: String(Date.now()) },
     });
     persistState(get());
   },
@@ -350,10 +486,21 @@ export const useGameStore = create<GameState>((set, get) => ({
       rangoliCompleted: true,
       totalTokensEarned: (current.stats?.totalTokensEarned ?? current.tokens) + reward,
     };
+    const updatedHistory: TokenTransaction[] = [
+      ...current.tokenHistory,
+      {
+        id: `rangoli_${Date.now()}`,
+        amount: reward,
+        source: 'Rangoli Artistry',
+        timestamp: Date.now(),
+      },
+    ].slice(-20);
 
     set({
       tokens: updatedTokens,
       stats: updatedStats,
+      tokenHistory: updatedHistory,
+      recentTokenDelta: { amount: reward, id: String(Date.now()) },
     });
     persistState(get());
   },
@@ -373,12 +520,25 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     let newTokens = current.tokens;
     let earnedTokens = current.stats?.totalTokensEarned ?? current.tokens;
+    let updatedHistory = current.tokenHistory;
+    let recentDelta = current.recentTokenDelta;
 
     if (justCompleted) {
       // Award quest completion bonus tokens!
       const reward = current.quest.rewardTokens;
       newTokens += reward;
       earnedTokens += reward;
+      updatedHistory = [
+        ...current.tokenHistory,
+        {
+          id: `quest_${Date.now()}`,
+          amount: reward,
+          source: 'Sacred Lights Quest Reward',
+          timestamp: Date.now(),
+        },
+      ].slice(-20);
+      recentDelta = { amount: reward, id: String(Date.now()) };
+
       soundEngine.playQuestComplete();
       soundEngine.playTokenEarned();
     }
@@ -409,6 +569,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({
       tokens: newTokens,
       stats: updatedStats,
+      tokenHistory: updatedHistory,
+      recentTokenDelta: recentDelta,
       quest: {
         ...current.quest,
         collectedDiyas: updatedCollected,
@@ -450,6 +612,18 @@ export const useGameStore = create<GameState>((set, get) => ({
       inventory: resetData.inventory.items,
       litDiyas: resetData.litDiyas,
       stats: resetData.stats,
+      cosmetics: resetData.cosmetics || { unlocked: [], equipped: null },
+      tokenHistory: resetData.tokenHistory && resetData.tokenHistory.length > 0
+        ? resetData.tokenHistory
+        : [
+            {
+              id: 'welcome_gift',
+              amount: resetData.tokens,
+              source: 'Festival Welcome Gift',
+              timestamp: Date.now(),
+            },
+          ],
+      recentTokenDelta: null,
       settings: resetData.settings,
       quest: {
         id: 'five_sacred_diyas',
@@ -538,6 +712,15 @@ export const useGameStore = create<GameState>((set, get) => ({
       balloonHighScore: newHighScore,
       totalTokensEarned: (current.stats?.totalTokensEarned ?? current.tokens) + rewardTokens,
     };
+    const updatedHistory: TokenTransaction[] = [
+      ...current.tokenHistory,
+      {
+        id: `balloon_${Date.now()}`,
+        amount: rewardTokens,
+        source: 'Balloon Shooting Gallery',
+        timestamp: Date.now(),
+      },
+    ].slice(-20);
 
     set({
       balloonGame: {
@@ -547,6 +730,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       },
       tokens: newTokens,
       stats: updatedStats,
+      tokenHistory: updatedHistory,
+      recentTokenDelta: { amount: rewardTokens, id: String(Date.now()) },
     });
     persistState(get());
   },

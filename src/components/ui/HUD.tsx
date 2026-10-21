@@ -1,8 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useGameStore } from '../../stores/useGameStore';
 import { useInputStore } from '../../stores/useInputStore';
 import { soundEngine } from '../../audio/soundEngine';
-import { Coins, Volume2, VolumeX, Settings, Sparkles } from 'lucide-react';
+import { Coins, Volume2, VolumeX, Settings, Sparkles, Award } from 'lucide-react';
 import { QuestTracker } from './QuestTracker';
 
 export const HUD: React.FC = () => {
@@ -12,9 +12,20 @@ export const HUD: React.FC = () => {
   const openModal = useGameStore((s) => s.openModal);
   const settings = useGameStore((s) => s.settings);
   const updateSettings = useGameStore((s) => s.updateSettings);
+  const recentTokenDelta = useGameStore((s) => s.recentTokenDelta);
+  const dismissTokenDelta = useGameStore((s) => s.dismissTokenDelta);
 
   const addTouchLookDelta = useInputStore((s) => s.addTouchLookDelta);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Auto-dismiss floating token delta after 2.2 seconds
+  useEffect(() => {
+    if (!recentTokenDelta) return;
+    const timer = setTimeout(() => {
+      dismissTokenDelta();
+    }, 2200);
+    return () => clearTimeout(timer);
+  }, [recentTokenDelta, dismissTokenDelta]);
 
   if (activeModal !== 'none') return null;
 
@@ -42,15 +53,38 @@ export const HUD: React.FC = () => {
       <div className="flex items-start justify-between w-full pointer-events-none">
         {/* Left Column: Token Counter & Quest Tracker */}
         <div className="flex flex-col items-start pointer-events-auto">
-          {/* Token Counter */}
-          <div className="flex items-center gap-2.5 bg-slate-900/80 backdrop-blur-md border border-festive-gold/50 rounded-full py-1.5 px-4 shadow-lg shadow-amber-500/10">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-600 to-festive-gold flex items-center justify-center text-amber-950 font-bold shadow-inner animate-pulse">
-              <Coins className="w-4 h-4 text-amber-950" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-amber-300/80">Tokens</span>
-              <span className="text-lg font-black leading-none text-festive-gold font-mono">{tokens}</span>
-            </div>
+          {/* Token Counter & Wallet Quick Trigger */}
+          <div className="relative flex items-center">
+            <button
+              onClick={() => openModal('rewards')}
+              role="button"
+              aria-label="Open Festival Wallet and Progression"
+              title="Open Festival Wallet, Wardrobe & Progression"
+              className="flex items-center gap-2.5 bg-slate-900/80 hover:bg-slate-850 backdrop-blur-md border border-festive-gold/50 hover:border-festive-gold rounded-full py-1.5 px-4 shadow-lg shadow-amber-500/10 transition-all cursor-pointer group active:scale-95"
+            >
+              <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-600 to-festive-gold flex items-center justify-center text-amber-950 font-bold shadow-inner group-hover:scale-105 transition-transform">
+                <Coins className="w-4 h-4 text-amber-950" />
+              </div>
+              <div className="flex flex-col items-start">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-amber-300/80 group-hover:text-amber-200">
+                  Tokens
+                </span>
+                <span className="text-lg font-black leading-none text-festive-gold font-mono">{tokens}</span>
+              </div>
+            </button>
+
+            {/* Instant Visual Token Feedback Badge */}
+            {recentTokenDelta && (
+              <div
+                className={`absolute left-full ml-2.5 px-2.5 py-1 rounded-full text-xs font-black font-mono shadow-md border whitespace-nowrap animate-in fade-in zoom-in-95 duration-200 ${
+                  recentTokenDelta.amount > 0
+                    ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/60 shadow-emerald-500/20'
+                    : 'bg-amber-950/90 text-amber-300 border-amber-500/60 shadow-amber-500/20'
+                }`}
+              >
+                {recentTokenDelta.amount > 0 ? `+${recentTokenDelta.amount}` : recentTokenDelta.amount} 🪙
+              </div>
+            )}
           </div>
 
           {/* Festival Quest Tracker */}
@@ -65,6 +99,17 @@ export const HUD: React.FC = () => {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2 pointer-events-auto">
+          {/* Rewards & Progression Quick Trigger */}
+          <button
+            onClick={() => openModal('rewards')}
+            aria-label="Rewards & Progression"
+            title="Festival Rewards, Wardrobe & Progression"
+            className="flex items-center gap-1.5 bg-gradient-to-r from-amber-600 to-yellow-600 hover:brightness-110 active:scale-95 transition-all text-white text-xs font-bold py-2 px-3 rounded-full shadow-lg border border-festive-gold/60 cursor-pointer"
+          >
+            <Award className="w-4 h-4 text-festive-gold" />
+            <span className="hidden lg:inline">Rewards</span>
+          </button>
+
           {/* Grand Fireworks Finale Quick Trigger */}
           <button
             onClick={() => openModal('finale')}
