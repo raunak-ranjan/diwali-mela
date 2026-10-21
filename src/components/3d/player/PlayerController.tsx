@@ -224,12 +224,12 @@ export const PlayerController = () => {
     // Slightly slower spring for a weighty, cinematic follow feel
     camera.position.lerp(targetCamPos.current, 1 - Math.exp(-6 * safeDelta));
 
-    // Camera lookAt leads slightly ahead of player in movement direction for better anticipation
+    // Camera lookAt leads in yaw direction and adjusts with pitch
     const lookAheadDist = 1.4 * smoothSpeed.current;
     const lookTarget = new THREE.Vector3(
-      pos.current.x + Math.sin(yaw.current) * lookAheadDist,
-      pos.current.y + 1.2 + bobOffset * 0.5,
-      pos.current.z + Math.cos(yaw.current) * lookAheadDist + 1.5
+      pos.current.x + Math.sin(yaw.current) * (1.4 + lookAheadDist),
+      pos.current.y + 1.3 + bobOffset * 0.5 + (0.4 - pitch.current) * 2.2,
+      pos.current.z + Math.cos(yaw.current) * (1.4 + lookAheadDist)
     );
     camera.lookAt(lookTarget);
 

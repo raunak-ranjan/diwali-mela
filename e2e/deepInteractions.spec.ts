@@ -14,6 +14,10 @@ test.describe('Deep Diwali Mela Gameplay Verification', () => {
     });
 
     page.on('requestfailed', (req) => {
+      // Ignore transient external font CDN blips during page reload
+      if (req.url().includes('fonts.googleapis.com') || req.url().includes('fonts.gstatic.com')) {
+        return;
+      }
       failedRequests.push(`${req.method()} ${req.url()}: ${req.failure()?.errorText}`);
     });
 

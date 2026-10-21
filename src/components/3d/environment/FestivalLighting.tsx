@@ -38,7 +38,7 @@ export const FestivalLighting = () => {
       {/* Moon / Night sky cool silvery-blue directional light casting soft architectural shadows */}
       <directionalLight
         ref={moonLightRef}
-        position={[28, 48, -18]}
+        position={[42, 28, -16]}
         intensity={0.82}
         color="#bcd7ff"
         castShadow={quality !== 'low'}
