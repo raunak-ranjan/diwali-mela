@@ -12,6 +12,7 @@ export const FerrisWheel = () => {
 
   const numCabins = 8;
   const wheelRadius = 8.5;
+  const reducedMotion = useGameStore((s) => s.settings.reducedMotion);
 
   useEffect(() => {
     // Register collision base around Ferris wheel at X: 22, Z: 20
@@ -37,11 +38,13 @@ export const FerrisWheel = () => {
 
   useFrame((_, delta) => {
     if (wheelRef.current) {
-      // Rotate the giant wheel slowly
-      wheelRef.current.rotation.z += delta * 0.25;
+      // Clamped delta prevents rotational jumps on frame lag or tab blur
+      const safeDelta = Math.min(delta, 0.05);
+      const speed = reducedMotion ? 0.04 : 0.22;
+      wheelRef.current.rotation.z += safeDelta * speed;
       const currentAngle = wheelRef.current.rotation.z;
 
-      // Keep passenger cabins hanging vertically downwards due to gravity!
+      // Keep passenger cabins hanging vertically downwards due to gravity
       cabinsRef.current.forEach((cabin) => {
         if (cabin) {
           cabin.rotation.z = -currentAngle;
@@ -87,6 +90,36 @@ export const FerrisWheel = () => {
             emissiveIntensity={0.8}
           />
         </mesh>
+
+        {/* Festive Perimeter Rim Bulbs (16 along each rim) */}
+        {Array.from({ length: 16 }).map((_, idx) => {
+          const bAngle = (idx / 16) * Math.PI * 2;
+          const bx = Math.cos(bAngle) * wheelRadius;
+          const by = Math.sin(bAngle) * wheelRadius;
+          const isGold = idx % 2 === 0;
+          return (
+            <group key={idx}>
+              <mesh position={[bx, by, -1.8]}>
+                <sphereGeometry args={[0.14, 6, 6]} />
+                <meshStandardMaterial
+                  color={isGold ? '#fbbf24' : '#38bdf8'}
+                  emissive={isGold ? '#f59e0b' : '#0284c7'}
+                  emissiveIntensity={2.0}
+                  toneMapped={false}
+                />
+              </mesh>
+              <mesh position={[bx, by, 1.8]}>
+                <sphereGeometry args={[0.14, 6, 6]} />
+                <meshStandardMaterial
+                  color={isGold ? '#fbbf24' : '#38bdf8'}
+                  emissive={isGold ? '#f59e0b' : '#0284c7'}
+                  emissiveIntensity={2.0}
+                  toneMapped={false}
+                />
+              </mesh>
+            </group>
+          );
+        })}
 
         {/* Radial Spokes & Cabins */}
         {Array.from({ length: numCabins }).map((_, i) => {

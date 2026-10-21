@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { useFrame } from '@react-three/fiber';
 import { useGameStore } from '../../../stores/useGameStore';
 
 // --- TRADITIONAL CHHATRI (DOMED ROOFTOP PAVILION) ---
@@ -74,6 +75,9 @@ const OverheadBuntingSpan: React.FC<{
   width?: number;
   height?: number;
 }> = ({ z, width = 9.0, height = 5.4 }) => {
+  const flagsGroupRef = useRef<THREE.Group>(null);
+  const reducedMotion = useGameStore((s) => s.settings.reducedMotion);
+
   const flags = useMemo(() => {
     const colors = ['#ea580c', '#f59e0b', '#be123c', '#0891b2', '#15803d', '#7c3aed'];
     const count = 15;
@@ -96,6 +100,17 @@ const OverheadBuntingSpan: React.FC<{
     }
     return list;
   }, [width, height]);
+
+  // Gentle flutter of festival bunting pennants in the evening breeze
+  useFrame(({ clock }) => {
+    if (flagsGroupRef.current && !reducedMotion) {
+      const t = clock.getElapsedTime();
+      flagsGroupRef.current.children.forEach((child, idx) => {
+        child.rotation.x = Math.sin(t * 2.2 + idx * 0.45 + z * 0.3) * 0.12;
+        child.rotation.z = Math.PI + flags[idx].rotationZ + Math.sin(t * 1.6 + idx * 0.35) * 0.06;
+      });
+    }
+  });
 
   return (
     <group position={[0, 0, z]}>
@@ -125,21 +140,23 @@ const OverheadBuntingSpan: React.FC<{
         <meshStandardMaterial color="#1c1917" roughness={0.5} />
       </mesh>
 
-      {/* Triangular Pennant Flags */}
-      {flags.map((flag, idx) => (
-        <mesh
-          key={idx}
-          position={[flag.x, flag.y, 0]}
-          rotation={[0, 0, Math.PI + flag.rotationZ]}
-        >
-          <coneGeometry args={[0.18, 0.38, 3]} />
-          <meshStandardMaterial
-            color={flag.color}
-            roughness={0.7}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-      ))}
+      {/* Triangular Pennant Flags with subtle breeze animation */}
+      <group ref={flagsGroupRef}>
+        {flags.map((flag, idx) => (
+          <mesh
+            key={idx}
+            position={[flag.x, flag.y, 0]}
+            rotation={[0, 0, Math.PI + flag.rotationZ]}
+          >
+            <coneGeometry args={[0.18, 0.38, 3]} />
+            <meshStandardMaterial
+              color={flag.color}
+              roughness={0.7}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        ))}
+      </group>
     </group>
   );
 };

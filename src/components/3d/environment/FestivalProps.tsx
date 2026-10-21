@@ -1,4 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
+import * as THREE from 'three';
+import { useFrame } from '@react-three/fiber';
+import { useGameStore } from '../../../stores/useGameStore';
 
 // --- 1. TRADITIONAL MARIGOLD GARLAND SWAG ---
 export const MarigoldGarland: React.FC<{
@@ -7,7 +10,11 @@ export const MarigoldGarland: React.FC<{
   sag?: number;
   count?: number;
   flowerSize?: number;
-}> = ({ start, end, sag = 0.35, count = 14, flowerSize = 0.09 }) => {
+  sway?: boolean;
+}> = ({ start, end, sag = 0.35, count = 14, flowerSize = 0.09, sway = true }) => {
+  const garlandRef = useRef<THREE.Group>(null);
+  const reducedMotion = useGameStore((s) => s.settings.reducedMotion);
+
   const flowers = useMemo(() => {
     const list: Array<{ pos: [number, number, number]; color: string }> = [];
     const orange = '#ea580c';
@@ -29,8 +36,16 @@ export const MarigoldGarland: React.FC<{
     return list;
   }, [start, end, sag, count]);
 
+  // Subtle living festive sway in gentle evening breeze
+  useFrame(({ clock }) => {
+    if (garlandRef.current && sway && !reducedMotion) {
+      const t = clock.getElapsedTime();
+      garlandRef.current.rotation.x = Math.sin(t * 1.3 + start[0] * 1.2 + start[2]) * 0.024;
+    }
+  });
+
   return (
-    <group>
+    <group ref={garlandRef}>
       {flowers.map((f, idx) => (
         <group key={idx} position={f.pos}>
           {/* Flower Blossom Head */}
@@ -302,8 +317,30 @@ export const AkashKandilLantern: React.FC<{
   primaryColor?: string;
   ribbonColor?: string;
 }> = ({ position = [0, 0, 0], primaryColor = '#e11d48', ribbonColor = '#fbbf24' }) => {
+  const lanternRef = useRef<THREE.Group>(null);
+  const ribbonsRef = useRef<THREE.Group>(null);
+  const reducedMotion = useGameStore((s) => s.settings.reducedMotion);
+
+  useFrame(({ clock }) => {
+    if (!reducedMotion) {
+      const t = clock.getElapsedTime();
+      // Gentle lantern pendular sway
+      if (lanternRef.current) {
+        lanternRef.current.rotation.z = Math.sin(t * 1.4 + position[0] * 1.5) * 0.035;
+        lanternRef.current.rotation.x = Math.cos(t * 1.1 + position[2] * 1.5) * 0.025;
+      }
+      // Trailing silk ribbon flutter
+      if (ribbonsRef.current) {
+        ribbonsRef.current.children.forEach((ribbon, idx) => {
+          ribbon.rotation.z = Math.sin(t * 2.2 + idx * 0.7 + position[0]) * 0.08;
+          ribbon.rotation.x = Math.cos(t * 1.8 + idx * 0.5 + position[2]) * 0.06;
+        });
+      }
+    }
+  });
+
   return (
-    <group position={position}>
+    <group ref={lanternRef} position={position}>
       {/* Suspension thread */}
       <mesh position={[0, 0.4, 0]}>
         <cylinderGeometry args={[0.005, 0.005, 0.8]} />
@@ -334,18 +371,20 @@ export const AkashKandilLantern: React.FC<{
         />
       </mesh>
 
-      {/* Hanging Tail Ribbons (Jhalar) */}
-      {[-0.08, 0, 0.08].map((offset, idx) => (
-        <group key={idx} position={[offset, -0.32, (idx % 2 === 0 ? 0.03 : -0.03)]}>
-          <mesh>
-            <cylinderGeometry args={[0.015, 0.03, 0.35, 6]} />
-            <meshStandardMaterial
-              color={ribbonColor}
-              roughness={0.5}
-            />
-          </mesh>
-        </group>
-      ))}
+      {/* Hanging Tail Ribbons (Jhalar) with independent flutter */}
+      <group ref={ribbonsRef}>
+        {[-0.08, 0, 0.08].map((offset, idx) => (
+          <group key={idx} position={[offset, -0.32, (idx % 2 === 0 ? 0.03 : -0.03)]}>
+            <mesh>
+              <cylinderGeometry args={[0.015, 0.03, 0.35, 6]} />
+              <meshStandardMaterial
+                color={ribbonColor}
+                roughness={0.5}
+              />
+            </mesh>
+          </group>
+        ))}
+      </group>
     </group>
   );
 };

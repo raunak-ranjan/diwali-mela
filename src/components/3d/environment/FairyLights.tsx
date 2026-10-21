@@ -1,11 +1,13 @@
 import { useMemo, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
+import { useGameStore } from '../../../stores/useGameStore';
 
 export const FairyLights = () => {
   const count = 160;
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const meshRef = useRef<THREE.InstancedMesh>(null);
+  const reducedMotion = useGameStore((s) => s.settings.reducedMotion);
 
   // Traditional Indian festival fairground garland colors
   const lightData = useMemo(() => {
@@ -81,8 +83,8 @@ export const FairyLights = () => {
 
     lightData.forEach((item, i) => {
       dummy.position.set(...item.pos);
-      // Gentle festive twinkle
-      const scale = 0.12 + Math.sin(time * 3 + i * 0.5) * 0.025;
+      // Gentle festive twinkle (respecting reduced motion preferences)
+      const scale = reducedMotion ? 0.12 : 0.12 + Math.sin(time * 3 + i * 0.5) * 0.025;
       dummy.scale.set(scale, scale, scale);
       dummy.updateMatrix();
       meshRef.current!.setMatrixAt(i, dummy.matrix);
