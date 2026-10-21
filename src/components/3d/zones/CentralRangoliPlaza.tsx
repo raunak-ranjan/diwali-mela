@@ -47,7 +47,7 @@ export const CentralRangoliPlaza = () => {
           color="#e11d48"
           roughness={0.7}
           emissive="#9f1239"
-          emissiveIntensity={0.3}
+          emissiveIntensity={0.25}
         />
       </mesh>
 
@@ -80,7 +80,7 @@ export const CentralRangoliPlaza = () => {
           color="#0284c7"
           roughness={0.7}
           emissive="#0369a1"
-          emissiveIntensity={0.3}
+          emissiveIntensity={0.25}
         />
       </mesh>
 
@@ -92,7 +92,7 @@ export const CentralRangoliPlaza = () => {
         return (
           <mesh key={i} position={[x, 0.058, z]} rotation={[-Math.PI / 2, 0, angle]}>
             <coneGeometry args={[0.7, 1.4, 4]} />
-            <meshStandardMaterial color="#f43f5e" emissive="#be123c" emissiveIntensity={0.3} />
+            <meshStandardMaterial color="#f43f5e" emissive="#be123c" emissiveIntensity={0.25} />
           </mesh>
         );
       })}
@@ -109,27 +109,55 @@ export const CentralRangoliPlaza = () => {
         <mesh position={[0, 0.9, 0]} castShadow>
           <cylinderGeometry args={[1.4, 0.8, 0.4, 24]} />
           <meshStandardMaterial
-            color="#eab308"
-            metalness={0.8}
-            roughness={0.2}
+            color="#d97706"
+            metalness={0.85}
+            roughness={0.22}
           />
         </mesh>
+        {/* Embossed Urli Rim */}
+        <mesh position={[0, 1.1, 0]}>
+          <torusGeometry args={[1.4, 0.035, 8, 24]} />
+          <meshStandardMaterial color="#fbbf24" metalness={0.9} roughness={0.2} />
+        </mesh>
 
-        {/* Floating scented water & rose petals */}
+        {/* Floating scented water surface */}
         <mesh position={[0, 1.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[1.35, 24]} />
           <meshStandardMaterial
-            color="#fb7185" // Rose petal water
-            roughness={0.2}
-            metalness={0.4}
-            emissive="#e11d48"
-            emissiveIntensity={0.4}
+            color="#be123c" // Deep rose water
+            roughness={0.15}
+            metalness={0.3}
           />
         </mesh>
 
-        {/* Central Akhand Jyoti / Big Plaza Diya */}
-        <mesh position={[0, 1.25, 0]} castShadow>
-          <coneGeometry args={[0.3, 0.5, 12]} />
+        {/* Floating Rose & Marigold Petal Clusters */}
+        {[
+          [-0.6, 0.4, '#fb7185'],
+          [0.7, -0.3, '#fbbf24'],
+          [-0.3, -0.7, '#f43f5e'],
+          [0.5, 0.6, '#ea580c'],
+          [-0.8, -0.2, '#f59e0b'],
+          [0.2, -0.8, '#f43f5e'],
+        ].map(([px, pz, col], idx) => (
+          <mesh
+            key={idx}
+            position={[Number(px), 1.06, Number(pz)]}
+            rotation={[-Math.PI / 2, 0, idx * 0.8]}
+          >
+            <circleGeometry args={[0.12, 6]} />
+            <meshStandardMaterial color={String(col)} roughness={0.7} />
+          </mesh>
+        ))}
+
+        {/* Central Akhand Jyoti Brass Diya Base */}
+        <mesh position={[0, 1.12, 0]} castShadow>
+          <cylinderGeometry args={[0.42, 0.28, 0.16, 16]} />
+          <meshStandardMaterial color="#fbbf24" metalness={0.9} roughness={0.2} />
+        </mesh>
+
+        {/* Central Akhand Jyoti Sacred Flame */}
+        <mesh position={[0, 1.28, 0]} castShadow>
+          <coneGeometry args={[0.22, 0.48, 12]} />
           <meshStandardMaterial
             color="#fff5cc"
             emissive="#ff7700"
