@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 
@@ -7,7 +7,7 @@ export const FairyLights = () => {
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const meshRef = useRef<THREE.InstancedMesh>(null);
 
-  // Generate catenary wire points between decorative poles
+  // Traditional Indian festival fairground garland colors
   const lightData = useMemo(() => {
     const data: Array<{ pos: [number, number, number]; color: THREE.Color }> = [];
     const colors = [
@@ -64,14 +64,25 @@ export const FairyLights = () => {
     return data.slice(0, count);
   }, []);
 
+  // Assign individual festive colors to instanced mesh bulbs
+  useEffect(() => {
+    if (!meshRef.current) return;
+    lightData.forEach((item, i) => {
+      meshRef.current!.setColorAt(i, item.color);
+    });
+    if (meshRef.current.instanceColor) {
+      meshRef.current.instanceColor.needsUpdate = true;
+    }
+  }, [lightData]);
+
   useFrame(({ clock }) => {
     if (!meshRef.current) return;
     const time = clock.getElapsedTime();
 
     lightData.forEach((item, i) => {
       dummy.position.set(...item.pos);
-      // Subtle twinkle
-      const scale = 0.12 + Math.sin(time * 3 + i * 0.5) * 0.03;
+      // Gentle festive twinkle
+      const scale = 0.12 + Math.sin(time * 3 + i * 0.5) * 0.025;
       dummy.scale.set(scale, scale, scale);
       dummy.updateMatrix();
       meshRef.current!.setMatrixAt(i, dummy.matrix);
@@ -88,10 +99,10 @@ export const FairyLights = () => {
       >
         <sphereGeometry args={[1, 8, 8]} />
         <meshStandardMaterial
-          color="#ffeb3b"
-          emissive="#ffb300"
-          emissiveIntensity={2.5}
-          roughness={0.2}
+          color="#ffffff"
+          emissive="#ffffff"
+          emissiveIntensity={1.8}
+          roughness={0.25}
           toneMapped={false}
         />
       </instancedMesh>

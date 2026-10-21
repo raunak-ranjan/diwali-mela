@@ -73,7 +73,7 @@ export const InstancedDiyas = () => {
   const flameMeshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
 
-  // Update matrices and animate flame flickers
+  // Update matrices and animate flame flickers with organic multi-harmonic frequencies
   useFrame(({ clock }) => {
     if (!clayMeshRef.current || !flameMeshRef.current) return;
     const time = clock.getElapsedTime();
@@ -88,12 +88,18 @@ export const InstancedDiyas = () => {
       dummy.updateMatrix();
       clayMeshRef.current!.setMatrixAt(i, dummy.matrix);
 
-      // Flame
+      // Organic dancing flame with gentle flutter
       if (isActuallyLit) {
-        // Natural candle/oil flame flicker frequency
-        const flicker = 0.08 + Math.sin(time * 12 + i * 1.7) * 0.02 + Math.cos(time * 7 + i) * 0.015;
-        dummy.position.set(diya.pos[0], diya.pos[1] + 0.14, diya.pos[2]);
-        dummy.scale.set(flicker * 0.9, flicker * 1.8, flicker * 0.9);
+        const flicker =
+          0.082 +
+          Math.sin(time * 11 + i * 2.1) * 0.016 +
+          Math.cos(time * 17 + i * 1.3) * 0.012 +
+          Math.sin(time * 5 + i * 0.7) * 0.014;
+        const swayX = Math.sin(time * 7 + i) * 0.012;
+        const swayZ = Math.cos(time * 6 + i) * 0.012;
+
+        dummy.position.set(diya.pos[0] + swayX, diya.pos[1] + 0.14, diya.pos[2] + swayZ);
+        dummy.scale.set(flicker * 0.85, flicker * 1.7, flicker * 0.85);
       } else {
         dummy.scale.set(0, 0, 0);
       }
@@ -107,7 +113,7 @@ export const InstancedDiyas = () => {
 
   return (
     <group>
-      {/* Clay Lamp Diya Base */}
+      {/* Clay Lamp Diya Base (Rich Indian Terracotta Earthenware) */}
       <instancedMesh
         ref={clayMeshRef}
         args={[undefined, undefined, diyaPositions.length]}
@@ -116,24 +122,24 @@ export const InstancedDiyas = () => {
       >
         <cylinderGeometry args={[0.9, 0.4, 0.6, 12]} />
         <meshStandardMaterial
-          color="#8d4925" // Teracotta earthenware
-          roughness={0.85}
-          metalness={0.1}
+          color="#8a431d" // Traditional baked terracotta clay
+          roughness={0.78}
+          metalness={0.08}
         />
       </instancedMesh>
 
-      {/* Glowing Teardrop Flame */}
+      {/* Glowing Teardrop Flame (Golden core with warm saffron-amber emissive bloom) */}
       <instancedMesh
         ref={flameMeshRef}
         args={[undefined, undefined, diyaPositions.length]}
       >
         <coneGeometry args={[0.5, 1.2, 8]} />
         <meshStandardMaterial
-          color="#fff59d"
-          emissive="#ff9100"
-          emissiveIntensity={3.5}
+          color="#fff7d6"
+          emissive="#ff7700"
+          emissiveIntensity={2.8}
           toneMapped={false}
-          roughness={0.1}
+          roughness={0.15}
         />
       </instancedMesh>
     </group>

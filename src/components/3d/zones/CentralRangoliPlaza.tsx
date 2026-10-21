@@ -131,9 +131,9 @@ export const CentralRangoliPlaza = () => {
         <mesh position={[0, 1.25, 0]} castShadow>
           <coneGeometry args={[0.3, 0.5, 12]} />
           <meshStandardMaterial
-            color="#fef08a"
-            emissive="#f59e0b"
-            emissiveIntensity={4.0}
+            color="#fff5cc"
+            emissive="#ff7700"
+            emissiveIntensity={2.5}
             toneMapped={false}
           />
         </mesh>

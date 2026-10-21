@@ -273,9 +273,9 @@ export const PlayerController = () => {
         <mesh position={[0.38, 0.9, 0.2]}>
           <coneGeometry args={[0.05, 0.12, 8]} />
           <meshStandardMaterial
-            color="#fef08a"
-            emissive="#f59e0b"
-            emissiveIntensity={3.0}
+            color="#fff7d6"
+            emissive="#ff7700"
+            emissiveIntensity={2.5}
             toneMapped={false}
           />
         </mesh>
