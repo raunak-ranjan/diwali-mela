@@ -67,10 +67,7 @@ export const VirtualJoystick: React.FC = () => {
   // Dedicated interaction button trigger
   const handleActionClick = () => {
     if (prompt && prompt.active) {
-      // Find and trigger
-      const target = interactionRegistry.findNearest(
-        new (window as any).THREE.Vector3(prompt.position[0], prompt.position[1], prompt.position[2])
-      );
+      const target = interactionRegistry.get(prompt.id);
       if (target) {
         target.onInteract();
       }

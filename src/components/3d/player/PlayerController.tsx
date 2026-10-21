@@ -206,7 +206,7 @@ export const PlayerController = () => {
   });
 
   return (
-    <group ref={playerRef} position={[0, 0, -25]}>
+    <group ref={playerRef} position={[0, 0, -20]}>
       {/* 3D Festive Avatar (Festive Kurta & Dupatta/Scarf) */}
       <group ref={avatarMeshRef} position={[0, 0, 0]}>
         {/* Head */}

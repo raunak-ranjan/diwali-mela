@@ -22,6 +22,10 @@ class InteractionRegistry {
     this.targets.delete(id);
   }
 
+  public get(id: string): InteractionTarget | undefined {
+    return this.targets.get(id);
+  }
+
   public findNearest(playerPos: THREE.Vector3): InteractionTarget | null {
     let nearest: InteractionTarget | null = null;
     let minDistance = Infinity;

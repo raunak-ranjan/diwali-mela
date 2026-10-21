@@ -1,5 +1,6 @@
 import React from 'react';
 import { useGameStore } from '../../stores/useGameStore';
+import { interactionRegistry } from '../../systems/interactionRegistry';
 import { Sparkles } from 'lucide-react';
 
 export const InteractionPrompt: React.FC = () => {
@@ -8,9 +9,19 @@ export const InteractionPrompt: React.FC = () => {
 
   if (!prompt || !prompt.active || activeModal !== 'none') return null;
 
+  const handleClick = () => {
+    const target = interactionRegistry.get(prompt.id);
+    if (target) {
+      target.onInteract();
+    }
+  };
+
   return (
     <div className="fixed bottom-24 sm:bottom-12 inset-x-0 pointer-events-none z-30 flex justify-center px-4 animate-slideUp">
-      <div className="bg-slate-900/90 backdrop-blur-md border border-festive-gold/60 shadow-2xl rounded-2xl py-2.5 px-5 flex items-center gap-3 text-white max-w-md">
+      <button
+        onClick={handleClick}
+        className="pointer-events-auto bg-slate-900/90 hover:bg-slate-800/90 active:scale-95 transition-all border border-festive-gold/60 shadow-2xl rounded-2xl py-2.5 px-5 flex items-center gap-3 text-white max-w-md cursor-pointer"
+      >
         <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-600 to-festive-gold flex items-center justify-center text-amber-950 font-black shrink-0 text-sm shadow-md">
           E
         </div>
@@ -23,7 +34,7 @@ export const InteractionPrompt: React.FC = () => {
             <div className="text-xs text-gray-300 font-medium">{prompt.sublabel}</div>
           )}
         </div>
-      </div>
+      </button>
     </div>
   );
 };

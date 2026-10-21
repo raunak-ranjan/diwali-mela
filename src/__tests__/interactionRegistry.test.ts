@@ -49,4 +49,26 @@ describe('InteractionRegistry', () => {
     const target = interactionRegistry.findNearest(new THREE.Vector3(0, 0, 0));
     expect(target?.id).not.toBe('temporary_target');
   });
+
+  it('retrieves registered target by ID directly without vector math', () => {
+    const onInteractMock = vi.fn();
+    interactionRegistry.register({
+      id: 'target_direct_id',
+      position: [5, 1, 10],
+      radius: 4.0,
+      label: 'Direct Test',
+      actionType: 'shop',
+      onInteract: onInteractMock,
+    });
+
+    const directTarget = interactionRegistry.get('target_direct_id');
+    expect(directTarget).toBeDefined();
+    expect(directTarget?.label).toBe('Direct Test');
+
+    directTarget?.onInteract();
+    expect(onInteractMock).toHaveBeenCalledTimes(1);
+
+    interactionRegistry.unregister('target_direct_id');
+    expect(interactionRegistry.get('target_direct_id')).toBeUndefined();
+  });
 });
