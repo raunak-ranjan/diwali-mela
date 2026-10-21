@@ -1,5 +1,6 @@
 import type { SaveDataV1, MiniGameStats } from '../types/game';
 import { KNOWN_COSMETIC_IDS, type TokenTransaction } from '../types/rewards';
+import { type DailyDarshanSaveState, getCalendarDateString } from '../types/daily';
 
 export interface ISaveRepository {
   load(): Promise<SaveDataV1>;
@@ -43,6 +44,14 @@ export const DEFAULT_SAVE_DATA: SaveDataV1 = {
       timestamp: Date.now(),
     },
   ],
+  dailyDarshan: {
+    date: getCalendarDateString(),
+    progress: {},
+    isClaimed: false,
+    streak: 0,
+    lastCompletedDate: null,
+    claimedDates: [],
+  },
   settings: {
     graphicsQuality: 'high',
     masterVolume: 0.8,
@@ -319,6 +328,43 @@ export class LocalSaveRepository implements ISaveRepository {
       ...rawSettings,
     };
 
+    // Sanitize daily darshan
+    const rawDaily = data.dailyDarshan && typeof data.dailyDarshan === 'object' ? data.dailyDarshan : {};
+    const todayStr = getCalendarDateString();
+    const rawDate = typeof rawDaily.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawDaily.date)
+      ? rawDaily.date
+      : todayStr;
+    const rawProgress = rawDaily.progress && typeof rawDaily.progress === 'object' && rawDaily.progress !== null
+      ? rawDaily.progress
+      : {};
+    const sanitizedProgress: Record<string, number> = {};
+    for (const [k, v] of Object.entries(rawProgress)) {
+      if (typeof v === 'number' && !isNaN(v) && v >= 0) {
+        sanitizedProgress[k] = v;
+      }
+    }
+    const rawClaimedDates = Array.isArray(rawDaily.claimedDates)
+      ? rawDaily.claimedDates.filter((d: unknown): d is string => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)).slice(-30)
+      : [];
+    const isClaimed = Boolean(rawDaily.isClaimed) || rawClaimedDates.includes(rawDate);
+    const streak = typeof rawDaily.streak === 'number' && rawDaily.streak >= 0 ? rawDaily.streak : 0;
+    const lastCompletedDate = typeof rawDaily.lastCompletedDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawDaily.lastCompletedDate)
+      ? rawDaily.lastCompletedDate
+      : null;
+
+    const dailyDarshan: DailyDarshanSaveState = {
+      date: rawDate,
+      progress: sanitizedProgress,
+      isClaimed,
+      streak,
+      lastCompletedDate,
+      claimedDates: rawClaimedDates,
+    };
+
+    if (stats.dailyStreak === undefined) {
+      stats.dailyStreak = streak;
+    }
+
     return {
       version: 1,
       tokens,
@@ -328,6 +374,7 @@ export class LocalSaveRepository implements ISaveRepository {
       quest,
       cosmetics,
       tokenHistory,
+      dailyDarshan,
       settings,
       lastSavedAt: typeof data.lastSavedAt === 'number' ? data.lastSavedAt : Date.now(),
     };

@@ -14,6 +14,7 @@ import {
   Lock,
   ArrowUpRight,
   ArrowDownRight,
+  Calendar,
 } from 'lucide-react';
 
 export const RewardsProgressionModal: React.FC = () => {
@@ -23,6 +24,7 @@ export const RewardsProgressionModal: React.FC = () => {
   const stats = useGameStore((s) => s.stats);
   const quest = useGameStore((s) => s.quest);
   const cosmetics = useGameStore((s) => s.cosmetics);
+  const dailyDarshan = useGameStore((s) => s.dailyDarshan);
   const tokenHistory = useGameStore((s) => s.tokenHistory);
   const unlockCosmetic = useGameStore((s) => s.unlockCosmetic);
   const equipCosmetic = useGameStore((s) => s.equipCosmetic);
@@ -490,6 +492,36 @@ export const RewardsProgressionModal: React.FC = () => {
                     <span className="text-base font-black text-white font-mono mt-1 block">
                       {stats.balloonHighScore || 0} Pts
                     </span>
+                  </div>
+                </div>
+
+                {/* 5. Festival Darshan Daily Streak */}
+                <div className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl flex items-start gap-3 sm:col-span-2">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-festive-gold shrink-0">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-bold text-white text-xs">Festival Darshan Seva Streak</h4>
+                      <span className="text-[10px] font-bold text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-500/30">
+                        {dailyDarshan.streak} Day{dailyDarshan.streak !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Consecutive calendar days fulfilling all three daily festival challenges.
+                    </p>
+                    <div className="flex items-center gap-4 mt-2 text-xs">
+                      <div>
+                        <span className="text-slate-400">Total Sets Claimed: </span>
+                        <span className="font-mono font-bold text-white">{stats.dailySetsCompleted || 0}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400">Status Today: </span>
+                        <span className={`font-bold ${dailyDarshan.isClaimed ? 'text-emerald-400' : dailyDarshan.isAllCompleted ? 'text-yellow-400' : 'text-slate-400'}`}>
+                          {dailyDarshan.isClaimed ? 'Claimed (+25 🪙)' : dailyDarshan.isAllCompleted ? 'Ready to Claim!' : 'In Progress'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

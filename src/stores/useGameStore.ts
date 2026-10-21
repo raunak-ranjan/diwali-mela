@@ -1,6 +1,14 @@
 import { create } from 'zustand';
 import type { GameZone, InteractionPromptState, ShopItem, GraphicsQuality, MiniGameStats, QuestNotification } from '../types/game';
 import { KNOWN_COSMETICS, type PlayerCosmetics, type TokenTransaction } from '../types/rewards';
+import {
+  type ChallengeType,
+  type DailyDarshanState,
+  DAILY_BONUS_TOKENS,
+  getCalendarDateString,
+  generateDailyChallenges,
+  isConsecutiveDay,
+} from '../types/daily';
 import { saveRepository } from '../systems/saveRepository';
 import { soundEngine } from '../audio/soundEngine';
 
@@ -112,6 +120,7 @@ interface GameState {
     rewardTokens: number;
   };
   questNotification: QuestNotification | null;
+  dailyDarshan: DailyDarshanState;
   balloonGame: {
     score: number;
     timeLeft: number;
@@ -148,6 +157,8 @@ interface GameState {
   completeRangoli: () => void;
   collectMagicalDiya: (diyaId: string, diyaName?: string) => boolean;
   dismissQuestNotification: () => void;
+  claimDailyBonus: () => boolean;
+  refreshDailyDarshan: (overrideDate?: string) => void;
   recordFireworksWatched: () => void;
   updateSettings: (newSettings: Partial<GameState['settings']>) => void;
   resetProgress: () => Promise<void>;
@@ -172,9 +183,76 @@ const persistState = (current: GameState) => {
     },
     cosmetics: current.cosmetics,
     tokenHistory: current.tokenHistory,
+    dailyDarshan: {
+      date: current.dailyDarshan.date,
+      progress: current.dailyDarshan.challenges.reduce((acc, c) => {
+        acc[c.id] = c.current;
+        return acc;
+      }, {} as Record<string, number>),
+      isClaimed: current.dailyDarshan.isClaimed,
+      streak: current.dailyDarshan.streak,
+      lastCompletedDate: current.dailyDarshan.lastCompletedDate,
+      claimedDates: current.dailyDarshan.claimedDates,
+    },
     settings: current.settings,
     lastSavedAt: Date.now(),
   });
+};
+
+const applyDailyProgress = (
+  currentDaily: DailyDarshanState,
+  type: ChallengeType,
+  amount = 1,
+  isAbsoluteScore = false,
+  injectedDate?: string
+): { updatedDaily: DailyDarshanState; justCompletedAll: boolean } => {
+  const today = injectedDate || getCalendarDateString();
+  let daily = currentDaily;
+
+  // If date rolled over while app was running
+  if (daily.date !== today) {
+    const consecutive = isConsecutiveDay(daily.date, today);
+    const wasClaimed = daily.isClaimed;
+    daily = {
+      date: today,
+      challenges: generateDailyChallenges(today),
+      isAllCompleted: false,
+      isClaimed: daily.claimedDates.includes(today),
+      streak: consecutive && wasClaimed ? daily.streak : 0,
+      lastCompletedDate: daily.lastCompletedDate,
+      claimedDates: daily.claimedDates,
+    };
+  }
+
+  let progressChanged = false;
+  const updatedChallenges = daily.challenges.map((ch) => {
+    if (ch.type !== type || ch.isCompleted) return ch;
+    progressChanged = true;
+    const newCurrent = isAbsoluteScore
+      ? Math.max(ch.current, amount)
+      : Math.min(ch.target, ch.current + amount);
+    return {
+      ...ch,
+      current: newCurrent,
+      isCompleted: newCurrent >= ch.target,
+    };
+  });
+
+  if (!progressChanged) {
+    return { updatedDaily: daily, justCompletedAll: false };
+  }
+
+  const allCompletedNow = updatedChallenges.length > 0 && updatedChallenges.every((c) => c.isCompleted);
+  const justCompletedAll = allCompletedNow && !daily.isAllCompleted;
+
+  return {
+    updatedDaily: {
+      ...daily,
+      challenges: updatedChallenges,
+      isAllCompleted: allCompletedNow,
+    },
+    justCompletedAll,
+  };
 };
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -219,6 +297,15 @@ export const useGameStore = create<GameState>((set, get) => ({
     rewardTokens: 50,
   },
   questNotification: null,
+  dailyDarshan: {
+    date: getCalendarDateString(),
+    challenges: generateDailyChallenges(getCalendarDateString()),
+    isAllCompleted: false,
+    isClaimed: false,
+    streak: 0,
+    lastCompletedDate: null,
+    claimedDates: [],
+  },
   balloonGame: {
     score: 0,
     timeLeft: 30,
@@ -243,6 +330,54 @@ export const useGameStore = create<GameState>((set, get) => ({
   initializeSave: async () => {
     try {
       const data = await saveRepository.load();
+      const today = getCalendarDateString();
+      const rawDaily = data.dailyDarshan;
+      let restoredDaily: DailyDarshanState;
+
+      if (rawDaily && rawDaily.date === today) {
+        const challenges = generateDailyChallenges(today).map((ch) => {
+          const current = Math.min(ch.target, rawDaily.progress[ch.id] || 0);
+          return {
+            ...ch,
+            current,
+            isCompleted: current >= ch.target,
+          };
+        });
+        const isAllCompleted = challenges.length > 0 && challenges.every((c) => c.isCompleted);
+        const isClaimed = Boolean(rawDaily.isClaimed || rawDaily.claimedDates.includes(today));
+        restoredDaily = {
+          date: today,
+          challenges,
+          isAllCompleted,
+          isClaimed,
+          streak: rawDaily.streak || 0,
+          lastCompletedDate: rawDaily.lastCompletedDate || null,
+          claimedDates: rawDaily.claimedDates || [],
+        };
+      } else {
+        const prevDate = rawDaily?.date;
+        const prevClaimed = Boolean(rawDaily?.isClaimed);
+        let streak = rawDaily?.streak || 0;
+        if (prevDate && prevDate !== today) {
+          const consecutive = isConsecutiveDay(prevDate, today);
+          if (!consecutive || !prevClaimed) {
+            streak = 0;
+          }
+        }
+        const challenges = generateDailyChallenges(today);
+        const claimedDates = rawDaily?.claimedDates || [];
+        const isClaimed = claimedDates.includes(today);
+        restoredDaily = {
+          date: today,
+          challenges,
+          isAllCompleted: false,
+          isClaimed,
+          streak,
+          lastCompletedDate: rawDaily?.lastCompletedDate || null,
+          claimedDates,
+        };
+      }
+
       set({
         tokens: data.tokens,
         inventory: data.inventory.items,
@@ -260,6 +395,7 @@ export const useGameStore = create<GameState>((set, get) => ({
               },
             ],
         settings: data.settings,
+        dailyDarshan: restoredDaily,
         quest: {
           id: 'five_sacred_diyas',
           title: 'The Five Sacred Lights',
@@ -365,11 +501,24 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     soundEngine.playTokenEarned();
 
+    const { updatedDaily, justCompletedAll } = applyDailyProgress(current.dailyDarshan, 'taste_sweet', 1);
+    if (justCompletedAll) soundEngine.playQuestChime();
+
     set({
       tokens: updatedTokens,
       inventory: updatedInventory,
       tokenHistory: updatedHistory,
       recentTokenDelta: { amount: -item.price, id: String(Date.now()) },
+      dailyDarshan: updatedDaily,
+      questNotification: justCompletedAll
+        ? {
+            id: `daily_all_completed_${Date.now()}`,
+            title: '✨ Daily Darshan Completed!',
+            message: 'All 3 daily objectives fulfilled! Claim your +25 🪙 daily set bonus.',
+            type: 'completed',
+            timestamp: Date.now(),
+          }
+        : current.questNotification,
     });
     persistState(get());
     return true;
@@ -447,6 +596,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     const updatedLit = [...current.litDiyas, diyaId];
     soundEngine.playDiyaLight();
 
+    const { updatedDaily, justCompletedAll } = applyDailyProgress(current.dailyDarshan, 'light_diyas', 1);
+    if (justCompletedAll) soundEngine.playQuestChime();
+
     // 5 virtual tokens reward for spreading light!
     const reward = 5;
     const updatedTokens = current.tokens + reward;
@@ -471,13 +623,45 @@ export const useGameStore = create<GameState>((set, get) => ({
       stats: updatedStats,
       tokenHistory: updatedHistory,
       recentTokenDelta: { amount: reward, id: String(Date.now()) },
+      dailyDarshan: updatedDaily,
+      questNotification: justCompletedAll
+        ? {
+            id: `daily_all_completed_${Date.now()}`,
+            title: '✨ Daily Darshan Completed!',
+            message: 'All 3 daily objectives fulfilled! Claim your +25 🪙 daily set bonus.',
+            type: 'completed',
+            timestamp: Date.now(),
+          }
+        : current.questNotification,
     });
     persistState(get());
   },
 
   completeRangoli: () => {
     const current = get();
-    if (current.stats.rangoliCompleted) return;
+    const { updatedDaily, justCompletedAll } = applyDailyProgress(current.dailyDarshan, 'rangoli_art', 1);
+    if (justCompletedAll) soundEngine.playQuestChime();
+
+    const dailyNotification = justCompletedAll
+      ? {
+          id: `daily_all_completed_${Date.now()}`,
+          title: '✨ Daily Darshan Completed!',
+          message: 'All 3 daily objectives fulfilled! Claim your +25 🪙 daily set bonus.',
+          type: 'completed' as const,
+          timestamp: Date.now(),
+        }
+      : current.questNotification;
+
+    if (current.stats.rangoliCompleted) {
+      if (updatedDaily !== current.dailyDarshan) {
+        set({
+          dailyDarshan: updatedDaily,
+          questNotification: dailyNotification,
+        });
+        persistState(get());
+      }
+      return;
+    }
 
     const reward = 25;
     const updatedTokens = current.tokens + reward;
@@ -501,6 +685,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       stats: updatedStats,
       tokenHistory: updatedHistory,
       recentTokenDelta: { amount: reward, id: String(Date.now()) },
+      dailyDarshan: updatedDaily,
+      questNotification: dailyNotification,
     });
     persistState(get());
   },
@@ -589,12 +775,114 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   recordFireworksWatched: () => {
     const current = get();
+    const { updatedDaily, justCompletedAll } = applyDailyProgress(current.dailyDarshan, 'visit_attraction', 1);
+    if (justCompletedAll) soundEngine.playQuestChime();
+
     const updatedStats: MiniGameStats = {
       ...current.stats,
       fireworksWatchedCount: (current.stats.fireworksWatchedCount || 0) + 1,
     };
 
-    set({ stats: updatedStats });
+    set({
+      stats: updatedStats,
+      dailyDarshan: updatedDaily,
+      questNotification: justCompletedAll
+        ? {
+            id: `daily_all_completed_${Date.now()}`,
+            title: '✨ Daily Darshan Completed!',
+            message: 'All 3 daily objectives fulfilled! Claim your +25 🪙 daily set bonus.',
+            type: 'completed',
+            timestamp: Date.now(),
+          }
+        : current.questNotification,
+    });
+    persistState(get());
+  },
+
+  claimDailyBonus: () => {
+    const current = get();
+    const { dailyDarshan } = current;
+    if (!dailyDarshan.isAllCompleted || dailyDarshan.isClaimed) return false;
+    if (dailyDarshan.claimedDates.includes(dailyDarshan.date)) return false;
+
+    const reward = DAILY_BONUS_TOKENS;
+    const newTokens = current.tokens + reward;
+    const earnedTokens = (current.stats?.totalTokensEarned ?? current.tokens) + reward;
+
+    const consecutive = dailyDarshan.lastCompletedDate
+      ? isConsecutiveDay(dailyDarshan.lastCompletedDate, dailyDarshan.date)
+      : false;
+    const newStreak = consecutive ? dailyDarshan.streak + 1 : 1;
+
+    const updatedHistory: TokenTransaction[] = [
+      ...current.tokenHistory,
+      {
+        id: `daily_darshan_${Date.now()}`,
+        amount: reward,
+        source: 'Festival Darshan Daily Bonus',
+        timestamp: Date.now(),
+      },
+    ].slice(-20);
+
+    const updatedDaily: DailyDarshanState = {
+      ...dailyDarshan,
+      isClaimed: true,
+      streak: newStreak,
+      lastCompletedDate: dailyDarshan.date,
+      claimedDates: [...dailyDarshan.claimedDates, dailyDarshan.date].slice(-30),
+    };
+
+    const updatedStats: MiniGameStats = {
+      ...current.stats,
+      totalTokensEarned: earnedTokens,
+      dailyStreak: newStreak,
+      dailySetsCompleted: (current.stats?.dailySetsCompleted || 0) + 1,
+    };
+
+    soundEngine.playQuestComplete();
+    soundEngine.playTokenEarned();
+
+    set({
+      tokens: newTokens,
+      stats: updatedStats,
+      tokenHistory: updatedHistory,
+      recentTokenDelta: { amount: reward, id: String(Date.now()) },
+      dailyDarshan: updatedDaily,
+      questNotification: {
+        id: `daily_claimed_${Date.now()}`,
+        title: '🎉 Daily Bonus Claimed! (+25 🪙)',
+        message: `Streak: ${newStreak} day${newStreak > 1 ? 's' : ''}! Return tomorrow for fresh challenges!`,
+        type: 'completed',
+        timestamp: Date.now(),
+      },
+    });
+
+    persistState(get());
+    return true;
+  },
+
+  refreshDailyDarshan: (overrideDate?: string) => {
+    const current = get();
+    const targetDate = overrideDate || getCalendarDateString();
+    if (current.dailyDarshan.date === targetDate) return;
+
+    const consecutive = isConsecutiveDay(current.dailyDarshan.date, targetDate);
+    const wasClaimed = current.dailyDarshan.isClaimed;
+    const newStreak = consecutive && wasClaimed ? current.dailyDarshan.streak : 0;
+    const challenges = generateDailyChallenges(targetDate);
+    const isClaimed = current.dailyDarshan.claimedDates.includes(targetDate);
+
+    const updatedDaily: DailyDarshanState = {
+      date: targetDate,
+      challenges,
+      isAllCompleted: false,
+      isClaimed,
+      streak: newStreak,
+      lastCompletedDate: current.dailyDarshan.lastCompletedDate,
+      claimedDates: current.dailyDarshan.claimedDates,
+    };
+
+    set({ dailyDarshan: updatedDaily });
     persistState(get());
   },
 
@@ -607,6 +895,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   resetProgress: async () => {
     const resetData = await saveRepository.reset();
+    const today = getCalendarDateString();
     set({
       tokens: resetData.tokens,
       inventory: resetData.inventory.items,
@@ -625,6 +914,15 @@ export const useGameStore = create<GameState>((set, get) => ({
           ],
       recentTokenDelta: null,
       settings: resetData.settings,
+      dailyDarshan: {
+        date: today,
+        challenges: generateDailyChallenges(today),
+        isAllCompleted: false,
+        isClaimed: false,
+        streak: 0,
+        lastCompletedDate: null,
+        claimedDates: [],
+      },
       quest: {
         id: 'five_sacred_diyas',
         title: 'The Five Sacred Lights',
@@ -665,12 +963,15 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   recordBalloonHit: (points = 10) => {
-    const { balloonGame } = get();
+    const current = get();
+    const { balloonGame } = current;
     if (!balloonGame.isPlaying) return;
 
     soundEngine.playBalloonPop();
     const newScore = balloonGame.score + points;
     const newHigh = Math.max(newScore, balloonGame.highScore);
+    const { updatedDaily, justCompletedAll } = applyDailyProgress(current.dailyDarshan, 'balloon_hits', 1);
+    if (justCompletedAll) soundEngine.playQuestChime();
 
     set({
       balloonGame: {
@@ -678,6 +979,16 @@ export const useGameStore = create<GameState>((set, get) => ({
         score: newScore,
         highScore: newHigh,
       },
+      dailyDarshan: updatedDaily,
+      questNotification: justCompletedAll
+        ? {
+            id: `daily_all_completed_${Date.now()}`,
+            title: '✨ Daily Darshan Completed!',
+            message: 'All 3 daily objectives fulfilled! Claim your +25 🪙 daily set bonus.',
+            type: 'completed',
+            timestamp: Date.now(),
+          }
+        : current.questNotification,
     });
   },
 
@@ -722,6 +1033,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       },
     ].slice(-20);
 
+    const { updatedDaily, justCompletedAll } = applyDailyProgress(current.dailyDarshan, 'balloon_score', current.balloonGame.score, true);
+    if (justCompletedAll) soundEngine.playQuestChime();
+
     set({
       balloonGame: {
         ...current.balloonGame,
@@ -732,6 +1046,16 @@ export const useGameStore = create<GameState>((set, get) => ({
       stats: updatedStats,
       tokenHistory: updatedHistory,
       recentTokenDelta: { amount: rewardTokens, id: String(Date.now()) },
+      dailyDarshan: updatedDaily,
+      questNotification: justCompletedAll
+        ? {
+            id: `daily_all_completed_${Date.now()}`,
+            title: '✨ Daily Darshan Completed!',
+            message: 'All 3 daily objectives fulfilled! Claim your +25 🪙 daily set bonus.',
+            type: 'completed',
+            timestamp: Date.now(),
+          }
+        : current.questNotification,
     });
     persistState(get());
   },

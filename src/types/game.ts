@@ -1,4 +1,5 @@
 import type { PlayerCosmetics, TokenTransaction } from './rewards';
+import type { DailyDarshanSaveState } from './daily';
 
 export type GraphicsQuality = 'low' | 'medium' | 'high';
 
@@ -43,6 +44,8 @@ export interface MiniGameStats {
   fireworksWatchedCount: number;
   magicalDiyasCollected?: number;
   questCompleted?: boolean;
+  dailyStreak?: number;
+  dailySetsCompleted?: number;
 }
 
 export interface QuestProgress {
@@ -67,6 +70,7 @@ export interface SaveDataV1 {
   quest?: QuestProgress;
   cosmetics?: PlayerCosmetics;
   tokenHistory?: TokenTransaction[];
+  dailyDarshan?: DailyDarshanSaveState;
   settings: {
     graphicsQuality: GraphicsQuality;
     masterVolume: number;
