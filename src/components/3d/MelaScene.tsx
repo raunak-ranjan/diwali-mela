@@ -5,6 +5,7 @@ import { FloatingEmbers } from './environment/FloatingEmbers';
 import { DistantScenery } from './environment/DistantScenery';
 import { FairyLights } from './environment/FairyLights';
 import { InstancedDiyas } from './environment/InstancedDiyas';
+import { MagicalDiyas } from './environment/MagicalDiyas';
 import { GrandEntrance } from './zones/GrandEntrance';
 import { CentralRangoliPlaza } from './zones/CentralRangoliPlaza';
 import { FoodStalls } from './zones/FoodStalls';
@@ -39,6 +40,9 @@ export const MelaScene: React.FC = () => {
 
       {/* Hundreds of Clay Diyas */}
       <InstancedDiyas />
+
+      {/* Sacred Quest Collectible Diyas */}
+      <MagicalDiyas />
 
       {/* Fairground Zones */}
       <GrandEntrance />

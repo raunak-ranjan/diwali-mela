@@ -22,8 +22,14 @@ export const DEFAULT_SAVE_DATA: SaveDataV1 = {
     rangoliCompleted: false,
     totalTokensEarned: 50,
     fireworksWatchedCount: 0,
+    magicalDiyasCollected: 0,
+    questCompleted: false,
   },
   litDiyas: [],
+  quest: {
+    collectedDiyas: [],
+    isCompleted: false,
+  },
   settings: {
     graphicsQuality: 'high',
     masterVolume: 0.8,
@@ -176,6 +182,10 @@ export class LocalSaveRepository implements ISaveRepository {
     if (!data.stats || typeof data.stats !== 'object') return false;
     if (!Array.isArray(data.litDiyas)) return false;
     if (!data.settings || typeof data.settings !== 'object') return false;
+    if (data.quest !== undefined) {
+      if (!data.quest || typeof data.quest !== 'object') return false;
+      if (!Array.isArray(data.quest.collectedDiyas)) return false;
+    }
     return true;
   }
 
@@ -233,6 +243,24 @@ export class LocalSaveRepository implements ISaveRepository {
         : 0,
     };
 
+    // Sanitize quest progress
+    const rawQuest = data.quest && typeof data.quest === 'object' ? data.quest : {};
+    const collectedDiyas: string[] = Array.isArray(rawQuest.collectedDiyas)
+      ? Array.from(new Set(rawQuest.collectedDiyas.filter((id: unknown): id is string => typeof id === 'string')))
+      : (Array.isArray(data.collectedMagicalDiyas)
+        ? Array.from(new Set(data.collectedMagicalDiyas.filter((id: unknown): id is string => typeof id === 'string')))
+        : defaultSave.quest?.collectedDiyas || []);
+    const isCompleted = Boolean(rawQuest.isCompleted || rawStats.questCompleted);
+    const quest = {
+      collectedDiyas,
+      isCompleted,
+    };
+
+    stats.magicalDiyasCollected = typeof rawStats.magicalDiyasCollected === 'number' && rawStats.magicalDiyasCollected >= 0
+      ? rawStats.magicalDiyasCollected
+      : quest.collectedDiyas.length;
+    stats.questCompleted = quest.isCompleted;
+
     // Sanitize settings
     const rawSettings = (data.settings && typeof data.settings === 'object') ? data.settings : {};
     const settings = {
@@ -246,6 +274,7 @@ export class LocalSaveRepository implements ISaveRepository {
       inventory: { items },
       litDiyas,
       stats,
+      quest,
       settings,
       lastSavedAt: typeof data.lastSavedAt === 'number' ? data.lastSavedAt : Date.now(),
     };

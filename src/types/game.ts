@@ -39,6 +39,21 @@ export interface MiniGameStats {
   rangoliCompleted: boolean;
   totalTokensEarned: number;
   fireworksWatchedCount: number;
+  magicalDiyasCollected?: number;
+  questCompleted?: boolean;
+}
+
+export interface QuestProgress {
+  collectedDiyas: string[];
+  isCompleted: boolean;
+}
+
+export interface QuestNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'collected' | 'completed';
+  timestamp: number;
 }
 
 export interface SaveDataV1 {
@@ -47,6 +62,7 @@ export interface SaveDataV1 {
   inventory: PlayerInventory;
   stats: MiniGameStats;
   litDiyas: string[];
+  quest?: QuestProgress;
   settings: {
     graphicsQuality: GraphicsQuality;
     masterVolume: number;
@@ -63,6 +79,6 @@ export interface InteractionPromptState {
   id: string;
   label: string;
   sublabel?: string;
-  actionType: 'shop' | 'balloon_game' | 'ring_toss' | 'rangoli' | 'diya' | 'ferris_wheel' | 'stage' | 'fireworks';
+  actionType: 'shop' | 'balloon_game' | 'ring_toss' | 'rangoli' | 'diya' | 'ferris_wheel' | 'stage' | 'fireworks' | 'quest';
   position: [number, number, number];
 }

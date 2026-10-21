@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import * as fs from 'fs';
 import * as path from 'path';
 
 test('Comprehensive Final Project Audit: Gameplay, Performance, Controls & Persistence', async ({ page }) => {
@@ -9,7 +10,10 @@ test('Comprehensive Final Project Audit: Gameplay, Performance, Controls & Persi
     window.localStorage.clear();
   });
 
-  const artifactDir = 'C:\\Users\\KIIT\\.gemini\\antigravity\\brain\\73f011bd-151d-47ea-8675-1b321cb5003c';
+  const artifactDir = process.env.ARTIFACT_DIR || path.join(process.cwd(), 'test-artifacts');
+  if (!fs.existsSync(artifactDir)) {
+    fs.mkdirSync(artifactDir, { recursive: true });
+  }
 
   // 1. Desktop Experience Setup
   await page.setViewportSize({ width: 1440, height: 900 });

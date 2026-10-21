@@ -3,6 +3,7 @@ import { useGameStore } from '../../stores/useGameStore';
 import { useInputStore } from '../../stores/useInputStore';
 import { soundEngine } from '../../audio/soundEngine';
 import { Coins, Volume2, VolumeX, Settings, Sparkles } from 'lucide-react';
+import { QuestTracker } from './QuestTracker';
 
 export const HUD: React.FC = () => {
   const tokens = useGameStore((s) => s.tokens);
@@ -38,26 +39,32 @@ export const HUD: React.FC = () => {
   return (
     <div className="fixed inset-0 pointer-events-none z-30 flex flex-col justify-between p-3 md:p-6">
       {/* Top Bar */}
-      <div className="flex items-center justify-between w-full pointer-events-auto">
-        {/* Token Counter */}
-        <div className="flex items-center gap-2.5 bg-slate-900/80 backdrop-blur-md border border-festive-gold/50 rounded-full py-1.5 px-4 shadow-lg shadow-amber-500/10">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-600 to-festive-gold flex items-center justify-center text-amber-950 font-bold shadow-inner animate-pulse">
-            <Coins className="w-4 h-4 text-amber-950" />
+      <div className="flex items-start justify-between w-full pointer-events-none">
+        {/* Left Column: Token Counter & Quest Tracker */}
+        <div className="flex flex-col items-start pointer-events-auto">
+          {/* Token Counter */}
+          <div className="flex items-center gap-2.5 bg-slate-900/80 backdrop-blur-md border border-festive-gold/50 rounded-full py-1.5 px-4 shadow-lg shadow-amber-500/10">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-600 to-festive-gold flex items-center justify-center text-amber-950 font-bold shadow-inner animate-pulse">
+              <Coins className="w-4 h-4 text-amber-950" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-amber-300/80">Tokens</span>
+              <span className="text-lg font-black leading-none text-festive-gold font-mono">{tokens}</span>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-amber-300/80">Tokens</span>
-            <span className="text-lg font-black leading-none text-festive-gold font-mono">{tokens}</span>
-          </div>
+
+          {/* Festival Quest Tracker */}
+          <QuestTracker />
         </div>
 
         {/* Current Zone Badge */}
-        <div className="hidden sm:flex flex-col items-center bg-slate-900/80 backdrop-blur-md border border-amber-500/30 rounded-2xl py-1.5 px-5 shadow-lg">
+        <div className="hidden sm:flex flex-col items-center bg-slate-900/80 backdrop-blur-md border border-amber-500/30 rounded-2xl py-1.5 px-5 shadow-lg pointer-events-auto">
           <span className="text-[10px] uppercase tracking-widest text-festive-saffron font-bold">Location</span>
           <span className="text-sm font-semibold text-white">{zoneNames[currentZone] || 'Diwali Mela'}</span>
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 pointer-events-auto">
           {/* Grand Fireworks Finale Quick Trigger */}
           <button
             onClick={() => openModal('finale')}

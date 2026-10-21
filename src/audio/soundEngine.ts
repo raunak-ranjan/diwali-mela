@@ -229,6 +229,71 @@ class FestiveSoundEngine {
   }
 
   /**
+   * Sound effect: Sacred Diya collected - Ethereal, shimmering resonant chord
+   */
+  public playQuestChime() {
+    if (!this.ctx || this.isMuted) return;
+    this.resume();
+    const now = this.ctx.currentTime;
+
+    // Resonant shimmering chord in E major (E5, G#5, B5, E6, G#6)
+    const tones = [659.25, 830.61, 987.77, 1318.51, 1661.22];
+    tones.forEach((freq, idx) => {
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+
+      gain.gain.setValueAtTime(0.001, now + idx * 0.04);
+      gain.gain.linearRampToValueAtTime(0.2, now + idx * 0.04 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.04 + 1.1);
+
+      osc.connect(gain);
+      gain.connect(this.sfxGain!);
+
+      osc.start(now + idx * 0.04);
+      osc.stop(now + idx * 0.04 + 1.2);
+    });
+  }
+
+  /**
+   * Sound effect: Quest Complete Fanfare - Grand victorious festive celebration
+   */
+  public playQuestComplete() {
+    if (!this.ctx || this.isMuted) return;
+    this.resume();
+    const now = this.ctx.currentTime;
+
+    // Victorious fanfare: G4 -> C5 -> E5 -> G5 -> C6
+    const fanfare = [
+      { freq: 392.00, time: 0.00, dur: 0.18 },
+      { freq: 523.25, time: 0.14, dur: 0.18 },
+      { freq: 659.25, time: 0.28, dur: 0.18 },
+      { freq: 783.99, time: 0.42, dur: 0.25 },
+      { freq: 1046.50, time: 0.60, dur: 1.40 },
+    ];
+
+    fanfare.forEach((note) => {
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(note.freq, now + note.time);
+
+      gain.gain.setValueAtTime(0.001, now + note.time);
+      gain.gain.linearRampToValueAtTime(0.3, now + note.time + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + note.time + note.dur);
+
+      osc.connect(gain);
+      gain.connect(this.sfxGain!);
+
+      osc.start(now + note.time);
+      osc.stop(now + note.time + note.dur + 0.1);
+    });
+  }
+
+  /**
    * Ambient Festive Melody: Synthesizes a Raag Yaman / Bhairavi pentatonic festive drone
    */
   public startFestiveMusic() {

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { GameZone, InteractionPromptState, ShopItem, GraphicsQuality, MiniGameStats } from '../types/game';
+import type { GameZone, InteractionPromptState, ShopItem, GraphicsQuality, MiniGameStats, QuestNotification } from '../types/game';
 import { saveRepository } from '../systems/saveRepository';
 import { soundEngine } from '../audio/soundEngine';
 
@@ -97,6 +97,16 @@ interface GameState {
   stats: MiniGameStats;
   activeModal: ActiveModalType;
   prompt: InteractionPromptState | null;
+  quest: {
+    id: string;
+    title: string;
+    description: string;
+    targetCount: number;
+    collectedDiyas: string[];
+    isCompleted: boolean;
+    rewardTokens: number;
+  };
+  questNotification: QuestNotification | null;
   balloonGame: {
     score: number;
     timeLeft: number;
@@ -128,6 +138,8 @@ interface GameState {
   purchaseItem: (itemId: string) => boolean;
   lightDiya: (diyaId: string) => void;
   completeRangoli: () => void;
+  collectMagicalDiya: (diyaId: string, diyaName?: string) => boolean;
+  dismissQuestNotification: () => void;
   recordFireworksWatched: () => void;
   updateSettings: (newSettings: Partial<GameState['settings']>) => void;
   resetProgress: () => Promise<void>;
@@ -146,6 +158,10 @@ const persistState = (current: GameState) => {
     inventory: { items: current.inventory },
     litDiyas: current.litDiyas,
     stats: current.stats,
+    quest: {
+      collectedDiyas: current.quest.collectedDiyas,
+      isCompleted: current.quest.isCompleted,
+    },
     settings: current.settings,
     lastSavedAt: Date.now(),
   });
@@ -165,9 +181,21 @@ export const useGameStore = create<GameState>((set, get) => ({
     rangoliCompleted: false,
     totalTokensEarned: 50,
     fireworksWatchedCount: 0,
+    magicalDiyasCollected: 0,
+    questCompleted: false,
   },
   activeModal: 'welcome',
   prompt: null,
+  quest: {
+    id: 'five_sacred_diyas',
+    title: 'The Five Sacred Lights',
+    description: 'Kindle all 5 Sacred Golden Diyas hidden across the fairground.',
+    targetCount: 5,
+    collectedDiyas: [],
+    isCompleted: false,
+    rewardTokens: 50,
+  },
+  questNotification: null,
   balloonGame: {
     score: 0,
     timeLeft: 30,
@@ -198,6 +226,15 @@ export const useGameStore = create<GameState>((set, get) => ({
         litDiyas: data.litDiyas,
         stats: data.stats,
         settings: data.settings,
+        quest: {
+          id: 'five_sacred_diyas',
+          title: 'The Five Sacred Lights',
+          description: 'Kindle all 5 Sacred Golden Diyas hidden across the fairground.',
+          targetCount: 5,
+          collectedDiyas: data.quest?.collectedDiyas || [],
+          isCompleted: Boolean(data.quest?.isCompleted || data.stats?.questCompleted),
+          rewardTokens: 50,
+        },
         balloonGame: {
           score: 0,
           timeLeft: 30,
@@ -321,6 +358,73 @@ export const useGameStore = create<GameState>((set, get) => ({
     persistState(get());
   },
 
+  collectMagicalDiya: (diyaId: string, diyaName?: string) => {
+    const current = get();
+    // Guard against duplicate collection
+    if (current.quest.collectedDiyas.includes(diyaId)) return false;
+
+    const updatedCollected = [...current.quest.collectedDiyas, diyaId];
+    const targetCount = current.quest.targetCount;
+    const isNowComplete = updatedCollected.length >= targetCount;
+    const justCompleted = isNowComplete && !current.quest.isCompleted;
+
+    // Resonant audio chime upon kindle
+    soundEngine.playQuestChime();
+
+    let newTokens = current.tokens;
+    let earnedTokens = current.stats?.totalTokensEarned ?? current.tokens;
+
+    if (justCompleted) {
+      // Award quest completion bonus tokens!
+      const reward = current.quest.rewardTokens;
+      newTokens += reward;
+      earnedTokens += reward;
+      soundEngine.playQuestComplete();
+      soundEngine.playTokenEarned();
+    }
+
+    const updatedStats: MiniGameStats = {
+      ...current.stats,
+      totalTokensEarned: earnedTokens,
+      magicalDiyasCollected: updatedCollected.length,
+      questCompleted: isNowComplete || current.quest.isCompleted,
+    };
+
+    const notification: QuestNotification = justCompleted
+      ? {
+          id: 'quest_completed_' + Date.now(),
+          title: '🎉 Quest Complete: Sacred Lights Kindle!',
+          message: `All 5 Sacred Diyas illuminated! Awarded +${current.quest.rewardTokens} Festival Tokens.`,
+          type: 'completed',
+          timestamp: Date.now(),
+        }
+      : {
+          id: `diya_${diyaId}_${Date.now()}`,
+          title: '✨ Sacred Diya Kindled!',
+          message: `${diyaName || 'Magical Diya'} collected (${updatedCollected.length}/${targetCount})`,
+          type: 'collected',
+          timestamp: Date.now(),
+        };
+
+    set({
+      tokens: newTokens,
+      stats: updatedStats,
+      quest: {
+        ...current.quest,
+        collectedDiyas: updatedCollected,
+        isCompleted: isNowComplete || current.quest.isCompleted,
+      },
+      questNotification: notification,
+    });
+
+    persistState(get());
+    return true;
+  },
+
+  dismissQuestNotification: () => {
+    set({ questNotification: null });
+  },
+
   recordFireworksWatched: () => {
     const current = get();
     const updatedStats: MiniGameStats = {
@@ -347,6 +451,16 @@ export const useGameStore = create<GameState>((set, get) => ({
       litDiyas: resetData.litDiyas,
       stats: resetData.stats,
       settings: resetData.settings,
+      quest: {
+        id: 'five_sacred_diyas',
+        title: 'The Five Sacred Lights',
+        description: 'Kindle all 5 Sacred Golden Diyas hidden across the fairground.',
+        targetCount: 5,
+        collectedDiyas: resetData.quest?.collectedDiyas || [],
+        isCompleted: Boolean(resetData.quest?.isCompleted),
+        rewardTokens: 50,
+      },
+      questNotification: null,
       balloonGame: {
         score: 0,
         timeLeft: 30,
