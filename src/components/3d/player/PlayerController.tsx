@@ -17,10 +17,10 @@ export const PlayerController = () => {
   const openModal = useGameStore((s) => s.openModal);
 
   // Position and camera state
-  const pos = useRef(new THREE.Vector3(0, 0, -18)); // Start right by the grand entrance
+  const pos = useRef(new THREE.Vector3(0, 0, -20)); // Start right by the grand entrance threshold
   const yaw = useRef(0); // Camera horizontal rotation
-  const pitch = useRef(0.25); // Camera vertical tilt
-  const targetCamPos = useRef(new THREE.Vector3());
+  const pitch = useRef(0.12); // Subtle natural camera tilt towards the fairground horizon
+  const targetCamPos = useRef(new THREE.Vector3(0, 2.3, -25));
 
   // Keyboard events
   useEffect(() => {
@@ -140,8 +140,8 @@ export const PlayerController = () => {
 
     const moveDir = new THREE.Vector3();
     if (forwardInput !== 0 || rightInput !== 0) {
-      // Forward relative to camera heading
-      const camForward = new THREE.Vector3(-Math.sin(yaw.current), 0, -Math.cos(yaw.current)).normalize();
+      // Forward relative to camera heading (+Z into the fairground)
+      const camForward = new THREE.Vector3(Math.sin(yaw.current), 0, Math.cos(yaw.current)).normalize();
       const camRight = new THREE.Vector3(Math.cos(yaw.current), 0, -Math.sin(yaw.current)).normalize();
 
       moveDir.addScaledVector(camForward, forwardInput);
@@ -170,17 +170,17 @@ export const PlayerController = () => {
       playerRef.current.position.copy(pos.current);
     }
 
-    // Smooth Third-Person Camera Follow
-    const camDist = 5.2;
-    const camHeight = 2.4 + pitch.current * 2.0;
+    // Smooth Third-Person Camera Follow (behind player looking forward into fairground)
+    const camDist = 4.8;
+    const camHeight = 1.9 + pitch.current * 1.5;
     targetCamPos.current.set(
-      pos.current.x + Math.sin(yaw.current) * camDist,
+      pos.current.x - Math.sin(yaw.current) * camDist,
       pos.current.y + camHeight,
-      pos.current.z + Math.cos(yaw.current) * camDist
+      pos.current.z - Math.cos(yaw.current) * camDist
     );
 
     camera.position.lerp(targetCamPos.current, delta * 8);
-    camera.lookAt(pos.current.x, pos.current.y + 1.4, pos.current.z);
+    camera.lookAt(pos.current.x, pos.current.y + 1.2, pos.current.z + 1.5);
 
     // Interaction Proximity Check
     const nearest = interactionRegistry.findNearest(pos.current);
@@ -269,16 +269,23 @@ export const PlayerController = () => {
           <meshStandardMaterial color="#b45309" metalness={0.3} />
         </mesh>
 
-        {/* Handheld Festive Little Sparkler / Diya */}
+        {/* Handheld Festive Little Sparkler / Diya with Soft Golden Ambient Illumination */}
         <mesh position={[0.38, 0.9, 0.2]}>
           <coneGeometry args={[0.05, 0.12, 8]} />
           <meshStandardMaterial
             color="#fff7d6"
             emissive="#ff7700"
-            emissiveIntensity={2.5}
+            emissiveIntensity={3.2}
             toneMapped={false}
           />
         </mesh>
+        <pointLight
+          position={[0.38, 1.05, 0.2]}
+          color="#ffaa44"
+          intensity={2.2}
+          distance={8.0}
+          decay={1.2}
+        />
       </group>
     </group>
   );

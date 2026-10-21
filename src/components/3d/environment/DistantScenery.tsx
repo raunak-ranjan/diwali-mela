@@ -280,23 +280,13 @@ export const DistantScenery: React.FC = () => {
       </group>
 
       {/* ========================================================
-          4. SOUTH HORIZON: HISTORIC CITY APPROACH
-             (Beyond Grand Entrance, Z: -42)
+          4. SOUTH HORIZON: DISTANT DECORATIVE TORAN APPROACH
+             (Distant lanterns framing the approach)
       ======================================================== */}
-      <group position={[0, 0, -42]}>
-        {/* Distant Fortification Wall */}
-        <mesh position={[0, 4.5, 0]}>
-          <boxGeometry args={[88, 9, 3]} />
-          <meshStandardMaterial color="#140d09" roughness={0.95} />
-        </mesh>
-        {/* Arched Distant Gateway Opening */}
-        <mesh position={[0, 4, 0]}>
-          <boxGeometry args={[10, 8, 3.2]} />
-          <meshStandardMaterial color="#0c0705" roughness={0.95} />
-        </mesh>
-        {/* Gate Watchtowers */}
-        <DistantChhatri position={[-16, 9, 0]} scale={0.9} />
-        <DistantChhatri position={[16, 9, 0]} scale={0.9} />
+      {/* Placed far back so it never obstructs entrance or camera */}
+      <group position={[0, 0, -65]}>
+        <DistantChhatri position={[-28, 8, 0]} scale={1.0} />
+        <DistantChhatri position={[28, 8, 0]} scale={1.0} />
       </group>
 
       {/* ========================================================

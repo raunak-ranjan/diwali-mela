@@ -38,13 +38,13 @@ export const HandicraftStalls = () => {
       {/* Dark Walnut Wooden Base Frame */}
       <mesh position={[0, 0.75, 0]} castShadow receiveShadow>
         <boxGeometry args={[4.2, 1.5, 3.6]} />
-        <meshStandardMaterial color="#351d11" roughness={0.8} />
+        <meshStandardMaterial color="#6b371b" roughness={0.7} />
       </mesh>
 
       {/* Counter Serving Shelf */}
       <mesh position={[1.85, 1.48, 0]} castShadow receiveShadow>
         <boxGeometry args={[0.75, 0.08, 3.8]} />
-        <meshStandardMaterial color="#6b371b" roughness={0.4} />
+        <meshStandardMaterial color="#9a4312" roughness={0.4} />
       </mesh>
 
       {/* Stepped Wooden Display Shelves for Pottery & Diyas */}

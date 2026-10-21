@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense } from 'react';
+import { useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { MelaScene } from './components/3d/MelaScene';
 import { HUD } from './components/ui/HUD';
@@ -6,28 +6,14 @@ import { WelcomeScreen } from './components/ui/WelcomeScreen';
 import { VirtualJoystick } from './components/ui/VirtualJoystick';
 import { InteractionPrompt } from './components/ui/InteractionPrompt';
 import { LoadingScreen } from './components/ui/LoadingScreen';
+import { BalloonShootingUI } from './components/ui/MiniGameOverlays/BalloonShootingUI';
+import { StallsShopModal } from './components/ui/StallsShopModal';
+import { RangoliEditorUI } from './components/ui/RangoliEditorUI';
+import { FinaleModal } from './components/ui/FinaleModal';
+import { SettingsModal } from './components/ui/SettingsModal';
+import { PauseMenu } from './components/ui/PauseMenu';
 import { useGameStore } from './stores/useGameStore';
 import { useInputStore } from './stores/useInputStore';
-
-// Code-split heavy interactive modals & mini-games to minimize initial JS bundle
-const BalloonShootingUI = lazy(() =>
-  import('./components/ui/MiniGameOverlays/BalloonShootingUI').then((m) => ({ default: m.BalloonShootingUI }))
-);
-const StallsShopModal = lazy(() =>
-  import('./components/ui/StallsShopModal').then((m) => ({ default: m.StallsShopModal }))
-);
-const RangoliEditorUI = lazy(() =>
-  import('./components/ui/RangoliEditorUI').then((m) => ({ default: m.RangoliEditorUI }))
-);
-const FinaleModal = lazy(() =>
-  import('./components/ui/FinaleModal').then((m) => ({ default: m.FinaleModal }))
-);
-const SettingsModal = lazy(() =>
-  import('./components/ui/SettingsModal').then((m) => ({ default: m.SettingsModal }))
-);
-const PauseMenu = lazy(() =>
-  import('./components/ui/PauseMenu').then((m) => ({ default: m.PauseMenu }))
-);
 
 export function App() {
   const initializeSave = useGameStore((s) => s.initializeSave);
@@ -71,11 +57,14 @@ export function App() {
       <Canvas
         shadows={quality !== 'low'}
         dpr={dpr}
-        camera={{ position: [0, 3, -13], fov: 60 }}
+        camera={{ position: [0, 2.3, -25], fov: 60 }}
         gl={{
           antialias: quality !== 'low',
           powerPreference: 'high-performance',
           stencil: false,
+        }}
+        onCreated={({ gl }) => {
+          gl.toneMappingExposure = 1.35;
         }}
       >
         <MelaScene />
@@ -89,15 +78,13 @@ export function App() {
       {/* Immediate Welcome Screen */}
       <WelcomeScreen />
 
-      {/* Lazy Loaded Interactive Modals & Mini-Games */}
-      <Suspense fallback={null}>
-        <BalloonShootingUI />
-        <StallsShopModal />
-        <RangoliEditorUI />
-        <FinaleModal />
-        <SettingsModal />
-        <PauseMenu />
-      </Suspense>
+      {/* Interactive Modals & Mini-Games */}
+      <BalloonShootingUI />
+      <StallsShopModal />
+      <RangoliEditorUI />
+      <FinaleModal />
+      <SettingsModal />
+      <PauseMenu />
     </div>
   );
 }

@@ -94,7 +94,7 @@ export const CentralRangoliPlaza: React.FC = () => {
       <mesh position={[0, 0.02, 0]} receiveShadow>
         <cylinderGeometry args={[7.4, 7.6, 0.04, 48]} />
         <meshStandardMaterial
-          color="#331c12" // Deep Jaisalmer red sandstone
+          color="#703c28" // Warm Jaisalmer / Agra carved red sandstone
           roughness={0.7}
         />
       </mesh>
@@ -103,7 +103,7 @@ export const CentralRangoliPlaza: React.FC = () => {
       <mesh position={[0, 0.04, 0]} receiveShadow>
         <cylinderGeometry args={[7.0, 7.15, 0.03, 48]} />
         <meshStandardMaterial
-          color="#422216"
+          color="#8c4e36"
           roughness={0.65}
         />
       </mesh>
@@ -111,7 +111,7 @@ export const CentralRangoliPlaza: React.FC = () => {
       {/* Outer Molded Stone Lip */}
       <mesh position={[0, 0.05, 0]}>
         <torusGeometry args={[7.05, 0.025, 8, 48]} />
-        <meshStandardMaterial color="#542c1d" roughness={0.6} />
+        <meshStandardMaterial color="#a65d40" roughness={0.6} />
       </mesh>
 
       {/* ========================================================

@@ -21,11 +21,21 @@ export const GroundAndSky: React.FC = () => {
       {/* ========================================================
           1. BASE GROUND FAIRGROUND PLANE (Compacted Festival Earth)
       ======================================================== */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 10]} receiveShadow>
-        <planeGeometry args={[90, 95]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
+        <planeGeometry args={[130, 130]} />
         <meshStandardMaterial
-          color="#1e1510" // Warm nocturnal festival earth / morrum
-          roughness={0.92}
+          color="#54382b" // Warm nocturnal festival earth / morrum
+          roughness={0.88}
+          metalness={0.05}
+        />
+      </mesh>
+
+      {/* Welcoming South Entrance Approach Promenade (Z: -42 to -24) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, -32]} receiveShadow>
+        <planeGeometry args={[8.2, 18]} />
+        <meshStandardMaterial
+          color="#8a4d38"
+          roughness={0.72}
           metalness={0.06}
         />
       </mesh>
@@ -37,9 +47,9 @@ export const GroundAndSky: React.FC = () => {
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-13.5, 0.003, 3]} receiveShadow>
         <planeGeometry args={[10, 36]} />
         <meshStandardMaterial
-          color="#2e1a12" // Weathered terracotta flagstone
-          roughness={0.82}
-          metalness={0.08}
+          color="#6c4232" // Weathered terracotta flagstone
+          roughness={0.8}
+          metalness={0.06}
         />
       </mesh>
 
@@ -47,9 +57,9 @@ export const GroundAndSky: React.FC = () => {
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[13.5, 0.003, 6]} receiveShadow>
         <planeGeometry args={[8.5, 14]} />
         <meshStandardMaterial
-          color="#291a13"
-          roughness={0.82}
-          metalness={0.08}
+          color="#6c4232"
+          roughness={0.8}
+          metalness={0.06}
         />
       </mesh>
 
@@ -57,9 +67,9 @@ export const GroundAndSky: React.FC = () => {
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[22, 0.003, 20]} receiveShadow>
         <circleGeometry args={[9.5, 32]} />
         <meshStandardMaterial
-          color="#261711"
-          roughness={0.85}
-          metalness={0.08}
+          color="#663e2e"
+          roughness={0.82}
+          metalness={0.06}
         />
       </mesh>
 
@@ -67,9 +77,9 @@ export const GroundAndSky: React.FC = () => {
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, -22]} receiveShadow>
         <planeGeometry args={[11, 8]} />
         <meshStandardMaterial
-          color="#331c13"
-          roughness={0.78}
-          metalness={0.1}
+          color="#754634"
+          roughness={0.76}
+          metalness={0.08}
         />
       </mesh>
 
@@ -77,9 +87,9 @@ export const GroundAndSky: React.FC = () => {
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, 30.5]} receiveShadow>
         <planeGeometry args={[18, 6]} />
         <meshStandardMaterial
-          color="#331c13"
-          roughness={0.78}
-          metalness={0.1}
+          color="#754634"
+          roughness={0.76}
+          metalness={0.08}
         />
       </mesh>
 
@@ -91,9 +101,9 @@ export const GroundAndSky: React.FC = () => {
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, 2]} receiveShadow>
         <planeGeometry args={[8.2, 60]} />
         <meshStandardMaterial
-          color="#3b2319" // Red Dholpur sandstone paving
-          roughness={0.75}
-          metalness={0.08}
+          color="#8a4d38" // Agra red sandstone paving
+          roughness={0.72}
+          metalness={0.06}
         />
       </mesh>
 
@@ -101,9 +111,9 @@ export const GroundAndSky: React.FC = () => {
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, 0]} receiveShadow>
         <planeGeometry args={[52, 8.2]} />
         <meshStandardMaterial
-          color="#3b2319"
-          roughness={0.75}
-          metalness={0.08}
+          color="#8a4d38"
+          roughness={0.72}
+          metalness={0.06}
         />
       </mesh>
 
@@ -115,9 +125,9 @@ export const GroundAndSky: React.FC = () => {
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.008, 2]} receiveShadow>
         <planeGeometry args={[2.6, 60]} />
         <meshStandardMaterial
-          color="#482b1e" // Polished buff sandstone runner
-          roughness={0.68}
-          metalness={0.12}
+          color="#ad7952" // Polished Jaisalmer/Dholpur buff sandstone runner
+          roughness={0.65}
+          metalness={0.1}
         />
       </mesh>
 
@@ -125,9 +135,9 @@ export const GroundAndSky: React.FC = () => {
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.008, 0]} receiveShadow>
         <planeGeometry args={[52, 2.6]} />
         <meshStandardMaterial
-          color="#482b1e"
-          roughness={0.68}
-          metalness={0.12}
+          color="#ad7952"
+          roughness={0.65}
+          metalness={0.1}
         />
       </mesh>
 
@@ -139,7 +149,7 @@ export const GroundAndSky: React.FC = () => {
           position={[0, 0.009, pz]}
         >
           <planeGeometry args={[8.2, 0.12]} />
-          <meshStandardMaterial color="#21130d" roughness={0.9} />
+          <meshStandardMaterial color="#4f2c20" roughness={0.85} />
         </mesh>
       ))}
 
@@ -151,9 +161,9 @@ export const GroundAndSky: React.FC = () => {
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.010, 0]} receiveShadow>
         <circleGeometry args={[9.8, 8]} />
         <meshStandardMaterial
-          color="#361f15"
-          roughness={0.75}
-          metalness={0.1}
+          color="#854832"
+          roughness={0.72}
+          metalness={0.08}
         />
       </mesh>
 
@@ -161,52 +171,52 @@ export const GroundAndSky: React.FC = () => {
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]} receiveShadow>
         <ringGeometry args={[7.8, 9.4, 8]} />
         <meshStandardMaterial
-          color="#4c2c1f" // Warmer contrasting stone border
-          roughness={0.72}
-          metalness={0.12}
+          color="#b0744c" // Warmer contrasting stone border
+          roughness={0.68}
+          metalness={0.1}
         />
       </mesh>
 
       {/* ========================================================
           6. RAISED CARVED SANDSTONE KERB BORDERS (Height: y = 0.022)
-             Believable Stone Edges framing walkways & walkways
+             Believable Stone Edges framing walkways
       ======================================================== */}
       {/* West Edge of Main Promenade (South & North segments) */}
       <mesh position={[-4.18, 0.022, -15]}>
         <boxGeometry args={[0.26, 0.038, 26]} />
-        <meshStandardMaterial color="#4f2719" roughness={0.7} />
+        <meshStandardMaterial color="#994d35" roughness={0.68} />
       </mesh>
       <mesh position={[-4.18, 0.022, 19]}>
         <boxGeometry args={[0.26, 0.038, 26]} />
-        <meshStandardMaterial color="#4f2719" roughness={0.7} />
+        <meshStandardMaterial color="#994d35" roughness={0.68} />
       </mesh>
 
       {/* East Edge of Main Promenade (South & North segments) */}
       <mesh position={[4.18, 0.022, -15]}>
         <boxGeometry args={[0.26, 0.038, 26]} />
-        <meshStandardMaterial color="#4f2719" roughness={0.7} />
+        <meshStandardMaterial color="#994d35" roughness={0.68} />
       </mesh>
       <mesh position={[4.18, 0.022, 19]}>
         <boxGeometry args={[0.26, 0.038, 26]} />
-        <meshStandardMaterial color="#4f2719" roughness={0.7} />
+        <meshStandardMaterial color="#994d35" roughness={0.68} />
       </mesh>
 
       {/* North & South Kerbs for East-West Crossway */}
       <mesh position={[-16, 0.022, -4.18]}>
         <boxGeometry args={[20, 0.038, 0.26]} />
-        <meshStandardMaterial color="#4f2719" roughness={0.7} />
+        <meshStandardMaterial color="#994d35" roughness={0.68} />
       </mesh>
       <mesh position={[16, 0.022, -4.18]}>
         <boxGeometry args={[20, 0.038, 0.26]} />
-        <meshStandardMaterial color="#4f2719" roughness={0.7} />
+        <meshStandardMaterial color="#994d35" roughness={0.68} />
       </mesh>
       <mesh position={[-16, 0.022, 4.18]}>
         <boxGeometry args={[20, 0.038, 0.26]} />
-        <meshStandardMaterial color="#4f2719" roughness={0.7} />
+        <meshStandardMaterial color="#994d35" roughness={0.68} />
       </mesh>
       <mesh position={[16, 0.022, 4.18]}>
         <boxGeometry args={[20, 0.038, 0.26]} />
-        <meshStandardMaterial color="#4f2719" roughness={0.7} />
+        <meshStandardMaterial color="#994d35" roughness={0.68} />
       </mesh>
 
       {/* ========================================================
@@ -220,10 +230,10 @@ export const GroundAndSky: React.FC = () => {
           />
         </bufferGeometry>
         <pointsMaterial
-          size={0.7}
+          size={0.75}
           color="#fff8e7"
           transparent
-          opacity={0.8}
+          opacity={0.85}
         />
       </points>
 
@@ -234,24 +244,34 @@ export const GroundAndSky: React.FC = () => {
       <group position={[0, 0, 52]}>
         <mesh position={[0, 1.8, 0]}>
           <boxGeometry args={[85, 3.6, 0.8]} />
-          <meshStandardMaterial color="#2d170e" roughness={0.9} />
+          <meshStandardMaterial color="#6e3926" roughness={0.85} />
         </mesh>
         {/* Wall Top Cornice */}
         <mesh position={[0, 3.7, 0]}>
           <boxGeometry args={[85.4, 0.25, 1.1]} />
-          <meshStandardMaterial color="#422115" roughness={0.8} />
+          <meshStandardMaterial color="#8a4932" roughness={0.75} />
         </mesh>
       </group>
 
-      {/* South Wall Base & Main Body */}
+      {/* South Wall (Flanking Wings leaving Grand Entrance Gateway open) */}
       <group position={[0, 0, -32]}>
-        <mesh position={[0, 1.8, 0]}>
-          <boxGeometry args={[85, 3.6, 0.8]} />
-          <meshStandardMaterial color="#2d170e" roughness={0.9} />
+        {/* Left Wing */}
+        <mesh position={[-25, 1.8, 0]}>
+          <boxGeometry args={[34, 3.6, 0.8]} />
+          <meshStandardMaterial color="#6e3926" roughness={0.85} />
         </mesh>
-        <mesh position={[0, 3.7, 0]}>
-          <boxGeometry args={[85.4, 0.25, 1.1]} />
-          <meshStandardMaterial color="#422115" roughness={0.8} />
+        <mesh position={[-25, 3.7, 0]}>
+          <boxGeometry args={[34.4, 0.25, 1.1]} />
+          <meshStandardMaterial color="#8a4932" roughness={0.75} />
+        </mesh>
+        {/* Right Wing */}
+        <mesh position={[25, 1.8, 0]}>
+          <boxGeometry args={[34, 3.6, 0.8]} />
+          <meshStandardMaterial color="#6e3926" roughness={0.85} />
+        </mesh>
+        <mesh position={[25, 3.7, 0]}>
+          <boxGeometry args={[34.4, 0.25, 1.1]} />
+          <meshStandardMaterial color="#8a4932" roughness={0.75} />
         </mesh>
       </group>
 
@@ -259,11 +279,11 @@ export const GroundAndSky: React.FC = () => {
       <group position={[-42, 0, 10]}>
         <mesh position={[0, 1.8, 0]}>
           <boxGeometry args={[0.8, 3.6, 85]} />
-          <meshStandardMaterial color="#2d170e" roughness={0.9} />
+          <meshStandardMaterial color="#6e3926" roughness={0.85} />
         </mesh>
         <mesh position={[0, 3.7, 0]}>
           <boxGeometry args={[1.1, 0.25, 85.4]} />
-          <meshStandardMaterial color="#422115" roughness={0.8} />
+          <meshStandardMaterial color="#8a4932" roughness={0.75} />
         </mesh>
       </group>
 
@@ -271,11 +291,11 @@ export const GroundAndSky: React.FC = () => {
       <group position={[42, 0, 10]}>
         <mesh position={[0, 1.8, 0]}>
           <boxGeometry args={[0.8, 3.6, 85]} />
-          <meshStandardMaterial color="#2d170e" roughness={0.9} />
+          <meshStandardMaterial color="#6e3926" roughness={0.85} />
         </mesh>
         <mesh position={[0, 3.7, 0]}>
           <boxGeometry args={[1.1, 0.25, 85.4]} />
-          <meshStandardMaterial color="#422115" roughness={0.8} />
+          <meshStandardMaterial color="#8a4932" roughness={0.75} />
         </mesh>
       </group>
     </group>

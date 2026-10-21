@@ -135,9 +135,9 @@ export const InstancedDiyas = () => {
       >
         <coneGeometry args={[0.5, 1.2, 8]} />
         <meshStandardMaterial
-          color="#fff7d6"
-          emissive="#ff7700"
-          emissiveIntensity={2.8}
+          color="#fffbf0"
+          emissive="#ff9900"
+          emissiveIntensity={3.6}
           toneMapped={false}
           roughness={0.15}
         />

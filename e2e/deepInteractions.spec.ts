@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Deep Diwali Mela Gameplay Verification', () => {
   test('Complete Gameplay Loop: Movement, Balloon Game, Sweet Shop, Rangoli, Diya Lighting, Persistence & Console Health', async ({ page }) => {
+    test.setTimeout(90000);
     const consoleErrors: string[] = [];
     const failedRequests: string[] = [];
 

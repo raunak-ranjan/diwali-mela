@@ -11,36 +11,36 @@ export const FestivalLighting = () => {
   useFrame(({ clock }) => {
     if (moonLightRef.current) {
       const t = clock.getElapsedTime();
-      moonLightRef.current.intensity = 0.38 + Math.sin(t * 0.4) * 0.04;
+      moonLightRef.current.intensity = 0.82 + Math.sin(t * 0.4) * 0.05;
     }
   });
 
   return (
     <>
       {/* Traditional Indian Festival Midnight Sky & Atmospheric Fog */}
-      {/* Deep indigo background with fog starting at 22m to keep walkable stalls and plaza crisp */}
-      <color attach="background" args={['#060814']} />
-      <fog attach="fog" args={['#060814', 22, 95]} />
+      {/* Deep indigo background with fog starting at 35m to keep fairground architecture clear */}
+      <color attach="background" args={['#070a1a']} />
+      <fog attach="fog" args={['#070a1a', 35, 120]} />
 
-      {/* Ambient festive illumination: warm saffron/amber sky bounce with deep cool midnight ground shadows */}
+      {/* Ambient festive illumination: warm saffron/amber sky bounce with deep cool midnight ground fill */}
       <hemisphereLight
-        color="#ffb066"
-        groundColor="#0b0e24"
-        intensity={quality === 'low' ? 0.48 : 0.38}
+        color="#ffd8a8" // Warm radiant festive sky glow
+        groundColor="#253050" // Cool midnight ambient fill
+        intensity={quality === 'low' ? 0.95 : 0.82}
       />
 
-      {/* Subtle warm ambient fill so shadowed crevices retain rich terracotta and sandalwood warmth */}
+      {/* Warm ambient fill so sandstone architecture, ground, and stalls retain rich readable color */}
       <ambientLight
-        color="#ff9436"
-        intensity={quality === 'low' ? 0.28 : 0.16}
+        color="#ffaa55"
+        intensity={quality === 'low' ? 0.65 : 0.48}
       />
 
       {/* Moon / Night sky cool silvery-blue directional light casting soft architectural shadows */}
       <directionalLight
         ref={moonLightRef}
-        position={[28, 42, -18]}
-        intensity={0.38}
-        color="#9ec2f7"
+        position={[28, 48, -18]}
+        intensity={0.82}
+        color="#bcd7ff"
         castShadow={quality !== 'low'}
         shadow-mapSize-width={quality === 'high' ? 2048 : 1024}
         shadow-mapSize-height={quality === 'high' ? 2048 : 1024}
@@ -54,73 +54,79 @@ export const FestivalLighting = () => {
       />
 
       {/* --- STRATEGIC WARM FESTIVAL POINT LIGHTS --- */}
+      {/* Soft natural decay (1.2) creates wide, radiant pools of festival lantern light */}
 
       {/* 1. Grand Entrance Toran Archway lantern glow */}
       <pointLight
-        position={[0, 5.5, -24.5]}
-        color="#f59e0b"
-        intensity={quality === 'low' ? 1.8 : 2.4}
-        distance={18}
-        decay={2}
+        position={[0, 5.0, -23.5]}
+        color="#ffaa33"
+        intensity={quality === 'low' ? 5.5 : 7.5}
+        distance={28}
+        decay={1.2}
       />
 
       {/* 2. Walkway Pedestrian Light (between Entrance & Central Plaza) */}
       <pointLight
-        position={[0, 3.8, -12]}
-        color="#ffaa3b"
-        intensity={quality === 'low' ? 1.4 : 1.9}
-        distance={16}
-        decay={2}
+        position={[0, 4.0, -10]}
+        color="#ffb84d"
+        intensity={quality === 'low' ? 4.8 : 6.5}
+        distance={26}
+        decay={1.2}
       />
 
       {/* 3. Central Rangoli Plaza (grounded near Akhand Jyoti to illuminate floor patterns) */}
       <pointLight
-        position={[0, 2.2, 0]}
-        color="#ff9224"
-        intensity={quality === 'low' ? 2.0 : 2.8}
-        distance={22}
-        decay={2}
+        position={[0, 2.5, 0]}
+        color="#ff9922"
+        intensity={quality === 'low' ? 6.5 : 9.0}
+        distance={32}
+        decay={1.2}
       />
 
       {/* 4. Food & Sweets Bazaar (warm Halwai saffron illumination) */}
       <pointLight
-        position={[-11.5, 3.2, 7.5]}
+        position={[-12.5, 3.5, 7.5]}
         color="#f97316"
-        intensity={quality === 'low' ? 1.5 : 2.1}
-        distance={18}
-        decay={2}
+        intensity={quality === 'low' ? 5.0 : 7.0}
+        distance={26}
+        decay={1.2}
       />
 
-      {/* 5. Handicrafts & Akash Kandils Lane (active on medium/high) */}
-      {quality !== 'low' && (
-        <pointLight
-          position={[-11.5, 3.2, -8.5]}
-          color="#fb923c"
-          intensity={1.7}
-          distance={16}
-          decay={2}
-        />
-      )}
+      {/* 5. Handicrafts & Akash Kandils Lane */}
+      <pointLight
+        position={[-12.5, 3.5, -8.5]}
+        color="#fb923c"
+        intensity={quality === 'low' ? 4.8 : 6.5}
+        distance={24}
+        decay={1.2}
+      />
 
       {/* 6. Carnival Games Booth (warm golden festive carnival light) */}
       <pointLight
-        position={[11.5, 3.2, 6]}
+        position={[12.5, 3.5, 6]}
         color="#fbbf24"
-        intensity={quality === 'low' ? 1.5 : 2.0}
-        distance={18}
-        decay={2}
+        intensity={quality === 'low' ? 4.8 : 6.5}
+        distance={24}
+        decay={1.2}
       />
 
-      {/* 7. Cultural Sangeet Stage (active on medium/high) */}
-      {quality !== 'low' && (
-        <pointLight
-          position={[0, 3.8, 33]}
-          color="#fde047"
-          intensity={1.8}
-          distance={18}
-          decay={2}
-        />
-      )}
+      {/* 7. Cultural Sangeet Stage */}
+      <pointLight
+        position={[0, 4.2, 33]}
+        color="#fde047"
+        intensity={quality === 'low' ? 5.0 : 7.0}
+        distance={28}
+        decay={1.2}
+      />
+
+      {/* 8. Welcoming Entrance Approach Promenade */}
+      <pointLight
+        position={[0, 4.0, -32]}
+        color="#ffaa33"
+        intensity={quality === 'low' ? 4.5 : 6.0}
+        distance={26}
+        decay={1.2}
+      />
     </>
   );
 };

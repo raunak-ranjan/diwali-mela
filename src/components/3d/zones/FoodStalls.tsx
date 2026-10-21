@@ -61,13 +61,13 @@ export const FoodStalls = () => {
         {/* Teakwood Stall Counter Structure */}
         <mesh position={[0, 0.75, 0]} castShadow receiveShadow>
           <boxGeometry args={[4.2, 1.5, 3.6]} />
-          <meshStandardMaterial color="#3d1f0d" roughness={0.75} />
+          <meshStandardMaterial color="#6b371b" roughness={0.7} />
         </mesh>
 
         {/* Polished Countertop Serving Slab */}
         <mesh position={[1.85, 1.48, 0]} castShadow receiveShadow>
           <boxGeometry args={[0.75, 0.08, 3.8]} />
-          <meshStandardMaterial color="#78350f" roughness={0.35} metalness={0.1} />
+          <meshStandardMaterial color="#9a4312" roughness={0.35} metalness={0.1} />
         </mesh>
 
         {/* Brass Counter Corner Protectors */}
@@ -212,13 +212,13 @@ export const FoodStalls = () => {
         {/* Stall Base Frame */}
         <mesh position={[0, 0.75, 0]} castShadow receiveShadow>
           <boxGeometry args={[4.2, 1.5, 3.6]} />
-          <meshStandardMaterial color="#351a08" roughness={0.8} />
+          <meshStandardMaterial color="#6b371b" roughness={0.7} />
         </mesh>
 
         {/* Counter Serving Shelf */}
         <mesh position={[1.85, 1.48, 0]} castShadow receiveShadow>
           <boxGeometry args={[0.75, 0.08, 3.8]} />
-          <meshStandardMaterial color="#78350f" roughness={0.4} />
+          <meshStandardMaterial color="#9a4312" roughness={0.4} />
         </mesh>
 
         {/* 4 Wooden Corner Poles */}

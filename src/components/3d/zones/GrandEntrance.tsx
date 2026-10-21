@@ -197,6 +197,22 @@ export const GrandEntrance = () => {
         </mesh>
         <SacredKalash position={[0, 0.9, 0]} />
       </group>
+
+      {/* Warm Golden Pillar Illumination Lantern Lights */}
+      <pointLight
+        position={[-4.8, 3.8, 1.0]}
+        color="#ffaa33"
+        intensity={3.8}
+        distance={15}
+        decay={1.2}
+      />
+      <pointLight
+        position={[4.8, 3.8, 1.0]}
+        color="#ffaa33"
+        intensity={3.8}
+        distance={15}
+        decay={1.2}
+      />
     </group>
   );
 };
