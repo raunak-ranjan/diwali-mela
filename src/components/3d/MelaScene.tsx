@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import { FestivalLighting } from './environment/FestivalLighting';
 import { GroundAndSky } from './environment/GroundAndSky';
+import { DistantScenery } from './environment/DistantScenery';
 import { FairyLights } from './environment/FairyLights';
 import { InstancedDiyas } from './environment/InstancedDiyas';
 import { GrandEntrance } from './zones/GrandEntrance';
@@ -25,6 +26,9 @@ export const MelaScene: React.FC = () => {
 
       {/* Ground & Night Sky */}
       <GroundAndSky />
+
+      {/* Distant Royal Architecture & Environmental Depth */}
+      <DistantScenery />
 
       {/* Festive Fairy String Lights */}
       <FairyLights />
