@@ -7,6 +7,7 @@ import { VirtualJoystick } from './components/ui/VirtualJoystick';
 import { InteractionPrompt } from './components/ui/InteractionPrompt';
 import { LoadingScreen } from './components/ui/LoadingScreen';
 import { BalloonShootingUI } from './components/ui/MiniGameOverlays/BalloonShootingUI';
+import { RingTossUI } from './components/ui/MiniGameOverlays/RingTossUI';
 import { StallsShopModal } from './components/ui/StallsShopModal';
 import { RangoliEditorUI } from './components/ui/RangoliEditorUI';
 import { FinaleModal } from './components/ui/FinaleModal';
@@ -83,6 +84,7 @@ export function App() {
 
       {/* Interactive Modals & Mini-Games */}
       <BalloonShootingUI />
+      <RingTossUI />
       <StallsShopModal />
       <RangoliEditorUI />
       <FinaleModal />

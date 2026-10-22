@@ -85,6 +85,13 @@ export const SHOP_CATALOG: ShopItem[] = [
   },
 ];
 
+export const MAX_RING_TOSS_RINGS = 5;
+export const RING_TOSS_TIME_LIMIT = 30;
+export const calculateRingTossReward = (score: number): number => {
+  if (typeof score !== 'number' || score <= 0 || isNaN(score)) return 0;
+  return Math.min(25, Math.max(5, Math.floor(score / 3)));
+};
+
 export type ActiveModalType = 
   | 'none'
   | 'welcome'
@@ -132,8 +139,10 @@ interface GameState {
   ringTossGame: {
     score: number;
     ringsRemaining: number;
+    timeLeft: number;
     isPlaying: boolean;
     highScore: number;
+    hitsCount: number;
   };
   settings: {
     graphicsQuality: GraphicsQuality;
@@ -174,6 +183,11 @@ interface GameState {
   recordBalloonHit: (points?: number) => void;
   tickBalloonGame: () => void;
   endBalloonGame: () => void;
+  startRingTossGame: () => void;
+  recordRingTossThrow: (points: number, isHit: boolean) => void;
+  tickRingTossGame: () => void;
+  endRingTossGame: () => void;
+  cancelRingTossGame: () => void;
 }
 
 const persistState = (current: GameState) => {
@@ -322,8 +336,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   ringTossGame: {
     score: 0,
     ringsRemaining: 5,
+    timeLeft: 30,
     isPlaying: false,
     highScore: 0,
+    hitsCount: 0,
   },
   settings: {
     graphicsQuality: 'high',
@@ -422,8 +438,10 @@ export const useGameStore = create<GameState>((set, get) => ({
         ringTossGame: {
           score: 0,
           ringsRemaining: 5,
+          timeLeft: 30,
           isPlaying: false,
           highScore: data.stats.ringTossHighScore || 0,
+          hitsCount: 0,
         },
         isLoaded: true,
       });
@@ -454,7 +472,20 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   closeModal: () => {
-    set({ activeModal: 'none' });
+    const current = get();
+    set({
+      activeModal: 'none',
+      ringTossGame: {
+        ...current.ringTossGame,
+        isPlaying: false,
+        ringsRemaining: MAX_RING_TOSS_RINGS,
+        timeLeft: RING_TOSS_TIME_LIMIT,
+      },
+      balloonGame: {
+        ...current.balloonGame,
+        isPlaying: false,
+      },
+    });
   },
 
   addTokens: (amount: number, source: string = 'Festival Activity') => {
@@ -1071,8 +1102,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       ringTossGame: {
         score: 0,
         ringsRemaining: 5,
+        timeLeft: 30,
         isPlaying: false,
         highScore: 0,
+        hitsCount: 0,
       },
     });
     soundEngine.setVolumes(resetData.settings.masterVolume, resetData.settings.sfxVolume, resetData.settings.musicVolume);
@@ -1187,5 +1220,129 @@ export const useGameStore = create<GameState>((set, get) => ({
         : current.questNotification,
     });
     persistState(get());
+  },
+
+  startRingTossGame: () => {
+    soundEngine.resume();
+    const current = get();
+    set({
+      activeModal: 'ring_toss',
+      ringTossGame: {
+        score: 0,
+        ringsRemaining: MAX_RING_TOSS_RINGS,
+        timeLeft: RING_TOSS_TIME_LIMIT,
+        isPlaying: true,
+        highScore: current.ringTossGame.highScore,
+        hitsCount: 0,
+      },
+    });
+  },
+
+  recordRingTossThrow: (points: number, isHit: boolean) => {
+    const current = get();
+    const { ringTossGame } = current;
+    if (!ringTossGame.isPlaying || ringTossGame.ringsRemaining <= 0) return;
+
+    if (isHit) {
+      soundEngine.playDiyaLight();
+    } else {
+      soundEngine.playShootSound();
+    }
+
+    const newRingsRemaining = ringTossGame.ringsRemaining - 1;
+    const addedScore = isHit ? Math.max(0, points) : 0;
+    const newScore = ringTossGame.score + addedScore;
+    const newHits = ringTossGame.hitsCount + (isHit ? 1 : 0);
+    const newHigh = Math.max(newScore, ringTossGame.highScore);
+
+    set({
+      ringTossGame: {
+        ...ringTossGame,
+        score: newScore,
+        ringsRemaining: newRingsRemaining,
+        highScore: newHigh,
+        hitsCount: newHits,
+      },
+    });
+
+    if (newRingsRemaining <= 0) {
+      get().endRingTossGame();
+    }
+  },
+
+  tickRingTossGame: () => {
+    const { ringTossGame } = get();
+    if (!ringTossGame.isPlaying) return;
+
+    if (ringTossGame.timeLeft <= 1) {
+      get().endRingTossGame();
+    } else {
+      set({
+        ringTossGame: {
+          ...ringTossGame,
+          timeLeft: ringTossGame.timeLeft - 1,
+        },
+      });
+    }
+  },
+
+  endRingTossGame: () => {
+    const current = get();
+    // Guard against duplicate mini-game completion events!
+    if (!current.ringTossGame.isPlaying) return;
+
+    const score = current.ringTossGame.score;
+    const rewardTokens = calculateRingTossReward(score);
+
+    const newTokens = current.tokens + rewardTokens;
+    const newHighScore = Math.max(current.ringTossGame.highScore, score);
+    const updatedStats: MiniGameStats = {
+      ...current.stats,
+      ringTossHighScore: newHighScore,
+      totalTokensEarned: (current.stats?.totalTokensEarned ?? current.tokens) + rewardTokens,
+    };
+
+    const updatedHistory: TokenTransaction[] = rewardTokens > 0
+      ? [
+          ...current.tokenHistory,
+          {
+            id: `ringtoss_${Date.now()}`,
+            amount: rewardTokens,
+            source: 'Diwali Ring Toss Carnival',
+            timestamp: Date.now(),
+          },
+        ].slice(-20)
+      : current.tokenHistory;
+
+    if (rewardTokens > 0) {
+      soundEngine.playTokenEarned();
+    }
+
+    set({
+      ringTossGame: {
+        ...current.ringTossGame,
+        isPlaying: false,
+        highScore: newHighScore,
+      },
+      tokens: newTokens,
+      stats: updatedStats,
+      tokenHistory: updatedHistory,
+      recentTokenDelta: rewardTokens > 0 ? { amount: rewardTokens, id: String(Date.now()) } : null,
+    });
+
+    persistState(get());
+  },
+
+  cancelRingTossGame: () => {
+    const current = get();
+    set({
+      activeModal: 'none',
+      ringTossGame: {
+        ...current.ringTossGame,
+        isPlaying: false,
+        ringsRemaining: MAX_RING_TOSS_RINGS,
+        timeLeft: RING_TOSS_TIME_LIMIT,
+      },
+    });
   },
 }));

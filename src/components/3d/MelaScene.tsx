@@ -11,6 +11,7 @@ import { CentralRangoliPlaza } from './zones/CentralRangoliPlaza';
 import { FoodStalls } from './zones/FoodStalls';
 import { HandicraftStalls } from './zones/HandicraftStalls';
 import { BalloonShootingBooth } from './minigames/BalloonShootingBooth';
+import { RingTossBooth } from './minigames/RingTossBooth';
 import { FerrisWheel } from './zones/FerrisWheel';
 import { CulturalStage } from './zones/CulturalStage';
 import { FireworksShow } from './vfx/FireworksShow';
@@ -50,6 +51,7 @@ export const MelaScene: React.FC = () => {
       <FoodStalls />
       <HandicraftStalls />
       <BalloonShootingBooth />
+      <RingTossBooth />
       <FerrisWheel />
       <CulturalStage />
 

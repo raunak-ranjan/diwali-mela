@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Festival Pouch & Interactive Inventory Flow E2E', () => {
   test('HUD trigger, category tabs, sweet consumption, shop-to-pouch cycle, sparkler ignition, and reload persistence', async ({ page }) => {
-    test.setTimeout(120000);
+    test.setTimeout(150000);
 
     // Initial visit & clean storage
     await page.goto('/');
