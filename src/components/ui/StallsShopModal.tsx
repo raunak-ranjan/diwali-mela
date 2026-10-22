@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useGameStore, SHOP_CATALOG } from '../../stores/useGameStore';
+import { useNpcStore } from '../../stores/useNpcStore';
 import { Coins, ShoppingBag, Check, X } from 'lucide-react';
 
 export const StallsShopModal: React.FC = () => {
@@ -8,11 +9,37 @@ export const StallsShopModal: React.FC = () => {
   const tokens = useGameStore((s) => s.tokens);
   const inventory = useGameStore((s) => s.inventory);
   const purchaseItem = useGameStore((s) => s.purchaseItem);
+  const activeGreeting = useNpcStore((s) => s.activeGreeting);
 
   const [activeCategory, setActiveCategory] = useState<'all' | 'sweet' | 'diya' | 'handicraft'>('all');
   const [lastPurchased, setLastPurchased] = useState<string | null>(null);
 
   if (activeModal !== 'shop') return null;
+
+  // Determine contextual vendor dialogue
+  const vendorDialogue = activeGreeting
+    ? {
+        name: activeGreeting.vendorName,
+        shop: activeGreeting.shopName,
+        greeting: activeGreeting.text,
+      }
+    : activeCategory === 'sweet'
+    ? {
+        name: 'Ganesh Kaka',
+        shop: 'Shree Ganesh Sweets',
+        greeting: 'Namaste! Every mithai is prepared fresh with pure ghee and festive love.',
+      }
+    : activeCategory === 'diya' || activeCategory === 'handicraft'
+    ? {
+        name: 'Artisan Suresh',
+        shop: 'Festive Handicrafts',
+        greeting: 'Shubh Deepavali! May these glowing clay diyas bring light and joy to your home.',
+      }
+    : {
+        name: 'Mela Vendors',
+        shop: 'Diwali Bazaar',
+        greeting: 'Welcome to the festive bazaar! Sweets, clay diyas, and handcrafted treasures await you.',
+      };
 
   const filteredItems = SHOP_CATALOG.filter((item) => {
     if (activeCategory === 'all') return true;
@@ -78,6 +105,20 @@ export const StallsShopModal: React.FC = () => {
               {cat.label}
             </button>
           ))}
+        </div>
+
+        {/* Vendor Greeting Dialogue */}
+        <div
+          data-testid="shop-vendor-greeting"
+          className="bg-amber-950/40 border border-amber-500/20 rounded-2xl p-2.5 px-3.5 mb-2 flex items-center gap-2.5 text-xs text-amber-100"
+        >
+          <span className="text-lg">🙏</span>
+          <div className="leading-snug">
+            <span className="font-bold text-festive-gold">
+              {vendorDialogue.name} ({vendorDialogue.shop}):
+            </span>{' '}
+            <span className="italic text-amber-100/90 font-serif">"{vendorDialogue.greeting}"</span>
+          </div>
         </div>
 
         {/* Catalog Grid */}

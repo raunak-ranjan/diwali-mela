@@ -1,6 +1,7 @@
 import React from 'react';
 import { useGameStore } from '../../stores/useGameStore';
-import { Settings, Volume2, Monitor, Trash2, X, Eye } from 'lucide-react';
+import { useNpcStore } from '../../stores/useNpcStore';
+import { Settings, Volume2, Monitor, Trash2, X, Eye, Users } from 'lucide-react';
 import type { GraphicsQuality } from '../../types/game';
 
 export const SettingsModal: React.FC = () => {
@@ -9,6 +10,8 @@ export const SettingsModal: React.FC = () => {
   const settings = useGameStore((s) => s.settings);
   const updateSettings = useGameStore((s) => s.updateSettings);
   const resetProgress = useGameStore((s) => s.resetProgress);
+  const crowdDensity = useNpcStore((s) => s.crowdDensity);
+  const setCrowdDensity = useNpcStore((s) => s.setCrowdDensity);
 
   if (activeModal !== 'settings') return null;
 
@@ -128,6 +131,34 @@ export const SettingsModal: React.FC = () => {
             </div>
             <div className="text-[10px] text-gray-400 mt-0.5">
               Softens fireworks speed and disables pendulum oscillations for visual comfort.
+            </div>
+          </div>
+
+          {/* Ambient Visitors / Crowd Density */}
+          <div className="pt-2 border-t border-slate-800">
+            <label className="flex items-center gap-1.5 font-bold text-gray-300 mb-1.5">
+              <Users className="w-4 h-4 text-festive-gold" />
+              <span>Ambient Visitors (Crowd Density)</span>
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['full', 'reduced', 'off'] as const).map((density) => (
+                <button
+                  key={density}
+                  type="button"
+                  data-testid={`crowd-density-${density}`}
+                  onClick={() => setCrowdDensity(density)}
+                  className={`py-2 rounded-xl font-bold uppercase text-[11px] transition-all cursor-pointer ${
+                    crowdDensity === density
+                      ? 'bg-gradient-to-r from-festive-gold to-festive-saffron text-amber-950 shadow-md'
+                      : 'bg-slate-800 hover:bg-slate-700 text-gray-300'
+                  }`}
+                >
+                  {density}
+                </button>
+              ))}
+            </div>
+            <div className="text-[10px] text-gray-400 mt-1">
+              Full: Lively festival crowd • Reduced: Essential visitors • Off: Maximum performance
             </div>
           </div>
 

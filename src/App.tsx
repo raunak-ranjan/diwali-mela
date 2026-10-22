@@ -15,6 +15,7 @@ import { SettingsModal } from './components/ui/SettingsModal';
 import { PauseMenu } from './components/ui/PauseMenu';
 import { RewardsProgressionModal } from './components/ui/RewardsProgressionModal';
 import { FestivalPouchModal } from './components/ui/FestivalPouchModal';
+import { VendorGreetingBanner } from './components/ui/VendorGreetingBanner';
 import { useGameStore } from './stores/useGameStore';
 import { useInputStore } from './stores/useInputStore';
 
@@ -78,6 +79,7 @@ export function App() {
       <HUD />
       <VirtualJoystick />
       <InteractionPrompt />
+      <VendorGreetingBanner />
 
       {/* Immediate Welcome Screen */}
       <WelcomeScreen />
