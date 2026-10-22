@@ -15,6 +15,7 @@ import { RingTossBooth } from './minigames/RingTossBooth';
 import { FerrisWheel } from './zones/FerrisWheel';
 import { CulturalStage } from './zones/CulturalStage';
 import { FireworksShow } from './vfx/FireworksShow';
+import { FireworksPavilion } from './environment/FireworksPavilion';
 import { PlayerController } from './player/PlayerController';
 import { CrowdManager } from './characters/CrowdManager';
 import { useGameStore } from '../../stores/useGameStore';
@@ -59,7 +60,8 @@ export const MelaScene: React.FC = () => {
       {/* Living Mela: Ambient Visitors & Stall Vendors */}
       <CrowdManager />
 
-      {/* Fireworks VFX */}
+      {/* Fireworks VFX & Launch Station */}
+      <FireworksPavilion />
       <FireworksShow active={isFireworksActive} />
 
       {/* Player Controller & Camera */}

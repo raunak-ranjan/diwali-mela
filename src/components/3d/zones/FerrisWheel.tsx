@@ -8,7 +8,8 @@ import { useGameStore } from '../../../stores/useGameStore';
 export const FerrisWheel: React.FC = () => {
   const wheelRef = useRef<THREE.Group>(null);
   const cabinsRef = useRef<(THREE.Group | null)[]>([]);
-  const openModal = useGameStore((s) => s.openModal);
+  const boardFerrisWheel = useGameStore((s) => s.boardFerrisWheel);
+  const updateFerrisWheelAngle = useGameStore((s) => s.updateFerrisWheelAngle);
   const reducedMotion = useGameStore((s) => s.settings.reducedMotion);
 
   const numCabins = 8;
@@ -24,17 +25,17 @@ export const FerrisWheel: React.FC = () => {
       position: [18.0, 1.0, 20.0],
       radius: 4.5,
       label: 'Diwali Giant Ferris Wheel',
-      sublabel: 'Panoramic Festive Fairground View',
+      sublabel: 'Ride Ferris Wheel • Panoramic View',
       actionType: 'ferris_wheel',
       onInteract: () => {
-        openModal('finale');
+        boardFerrisWheel();
       },
     });
 
     return () => {
       interactionRegistry.unregister('ferris_wheel_ride');
     };
-  }, [openModal]);
+  }, [boardFerrisWheel]);
 
   // Smooth, continuous rotation with natural gravitational cabin counter-rotation
   useFrame(({ clock }, delta) => {
@@ -43,6 +44,7 @@ export const FerrisWheel: React.FC = () => {
       const speed = reducedMotion ? 0.04 : 0.18;
       wheelRef.current.rotation.z += safeDelta * speed;
       const currentAngle = wheelRef.current.rotation.z;
+      updateFerrisWheelAngle(currentAngle);
       const t = clock.getElapsedTime();
 
       // Keep passenger cabins hanging vertically downwards under gravity

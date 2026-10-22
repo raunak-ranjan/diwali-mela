@@ -100,6 +100,8 @@ export type ActiveModalType =
   | 'shop'
   | 'rangoli'
   | 'finale'
+  | 'stage'
+  | 'fireworks'
   | 'settings'
   | 'pause'
   | 'rewards'
@@ -143,6 +145,25 @@ interface GameState {
     isPlaying: boolean;
     highScore: number;
     hitsCount: number;
+  };
+  // Attractions: Ferris Wheel, Cultural Stage & Fireworks
+  ferrisWheelRide: {
+    isRiding: boolean;
+    cabinIndex: number;
+    rotationAngle: number;
+  };
+  culturalStageState: {
+    isPlayingMusic: boolean;
+    activeRaag: string;
+    lightingTheme: 'gold' | 'peacock' | 'saffron';
+  };
+  fireworksState: {
+    mode: 'idle' | 'scheduled' | 'interactive';
+    countdown: number;
+    showTimeRemaining: number;
+    manualLaunchesCount: number;
+    lastManualLaunch: number;
+    lastBurstType: 'peony' | 'willow' | 'ring' | 'crackle' | 'kamuro';
   };
   settings: {
     graphicsQuality: GraphicsQuality;
@@ -188,6 +209,18 @@ interface GameState {
   tickRingTossGame: () => void;
   endRingTossGame: () => void;
   cancelRingTossGame: () => void;
+
+  // Attraction actions
+  boardFerrisWheel: (cabinIndex?: number) => void;
+  exitFerrisWheel: () => void;
+  updateFerrisWheelAngle: (angle: number) => void;
+  setStagePlayingMusic: (playing: boolean) => void;
+  setStageRaag: (raag: string) => void;
+  setStageLightingTheme: (theme: 'gold' | 'peacock' | 'saffron') => void;
+  startScheduledFireworks: () => void;
+  stopFireworksShow: () => void;
+  tickFireworks: () => void;
+  triggerManualFirework: (burstType?: 'peony' | 'willow' | 'ring' | 'crackle' | 'kamuro') => void;
 }
 
 const persistState = (current: GameState) => {
@@ -341,6 +374,24 @@ export const useGameStore = create<GameState>((set, get) => ({
     highScore: 0,
     hitsCount: 0,
   },
+  ferrisWheelRide: {
+    isRiding: false,
+    cabinIndex: 0,
+    rotationAngle: 0,
+  },
+  culturalStageState: {
+    isPlayingMusic: false,
+    activeRaag: 'Raag Yaman',
+    lightingTheme: 'gold',
+  },
+  fireworksState: {
+    mode: 'idle',
+    countdown: 3,
+    showTimeRemaining: 20,
+    manualLaunchesCount: 0,
+    lastManualLaunch: 0,
+    lastBurstType: 'peony',
+  },
   settings: {
     graphicsQuality: 'high',
     masterVolume: 0.8,
@@ -473,8 +524,15 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   closeModal: () => {
     const current = get();
+    if (current.culturalStageState.isPlayingMusic) {
+      soundEngine.stopFestiveMusic();
+    }
     set({
       activeModal: 'none',
+      culturalStageState: {
+        ...current.culturalStageState,
+        isPlayingMusic: false,
+      },
       ringTossGame: {
         ...current.ringTossGame,
         isPlaying: false,
@@ -1344,5 +1402,137 @@ export const useGameStore = create<GameState>((set, get) => ({
         timeLeft: RING_TOSS_TIME_LIMIT,
       },
     });
+  },
+
+  // Attractions: Ferris Wheel
+  boardFerrisWheel: (cabinIndex = 0) => {
+    const current = get();
+    if (current.ferrisWheelRide.isRiding) return;
+    set({
+      ferrisWheelRide: {
+        ...current.ferrisWheelRide,
+        isRiding: true,
+        cabinIndex,
+      },
+      activeModal: 'none',
+      prompt: null,
+    });
+  },
+
+  exitFerrisWheel: () => {
+    const current = get();
+    if (!current.ferrisWheelRide.isRiding) return;
+    set({
+      ferrisWheelRide: {
+        ...current.ferrisWheelRide,
+        isRiding: false,
+      },
+      prompt: null,
+    });
+  },
+
+  updateFerrisWheelAngle: (angle: number) => {
+    set((s) => ({
+      ferrisWheelRide: {
+        ...s.ferrisWheelRide,
+        rotationAngle: angle,
+      },
+    }));
+  },
+
+  // Attractions: Cultural Stage
+  setStagePlayingMusic: (playing: boolean) => {
+    if (playing) {
+      soundEngine.resume();
+      soundEngine.startFestiveMusic();
+    } else {
+      soundEngine.stopFestiveMusic();
+    }
+    set((s) => ({
+      culturalStageState: {
+        ...s.culturalStageState,
+        isPlayingMusic: playing,
+      },
+    }));
+  },
+
+  setStageRaag: (raag: string) => {
+    set((s) => ({
+      culturalStageState: {
+        ...s.culturalStageState,
+        activeRaag: raag,
+      },
+    }));
+  },
+
+  setStageLightingTheme: (theme: 'gold' | 'peacock' | 'saffron') => {
+    set((s) => ({
+      culturalStageState: {
+        ...s.culturalStageState,
+        lightingTheme: theme,
+      },
+    }));
+  },
+
+  // Attractions: Fireworks
+  startScheduledFireworks: () => {
+    set((s) => ({
+      fireworksState: {
+        ...s.fireworksState,
+        mode: 'scheduled',
+        countdown: 3,
+        showTimeRemaining: 20,
+      },
+    }));
+  },
+
+  stopFireworksShow: () => {
+    set((s) => ({
+      fireworksState: {
+        ...s.fireworksState,
+        mode: 'idle',
+        countdown: 3,
+        showTimeRemaining: 20,
+      },
+    }));
+  },
+
+  tickFireworks: () => {
+    const current = get();
+    if (current.fireworksState.mode !== 'scheduled') return;
+    if (current.fireworksState.countdown > 0) {
+      set((s) => ({
+        fireworksState: {
+          ...s.fireworksState,
+          countdown: s.fireworksState.countdown - 1,
+        },
+      }));
+    } else if (current.fireworksState.showTimeRemaining > 0) {
+      const remaining = current.fireworksState.showTimeRemaining - 1;
+      if (remaining === 0) {
+        current.addTokens(50, 'Diwali Fireworks Spectacle');
+        current.recordFireworksWatched();
+      }
+      set((s) => ({
+        fireworksState: {
+          ...s.fireworksState,
+          showTimeRemaining: remaining,
+          mode: remaining === 0 ? 'idle' : 'scheduled',
+        },
+      }));
+    }
+  },
+
+  triggerManualFirework: (burstType = 'peony') => {
+    soundEngine.playFireworkExplosion();
+    set((s) => ({
+      fireworksState: {
+        ...s.fireworksState,
+        mode: s.fireworksState.mode === 'scheduled' ? 'scheduled' : 'interactive',
+        manualLaunchesCount: s.fireworksState.manualLaunchesCount + 1,
+        lastManualLaunch: Date.now(),
+        lastBurstType: burstType,
+      },
+    }));
   },
 }));

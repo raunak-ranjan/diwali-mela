@@ -94,10 +94,17 @@ const createSparkPool = (count: number): SparkParticle[] => {
   return p;
 };
 
-export const FireworksShow: React.FC<{ active: boolean }> = ({ active }) => {
+export const FireworksShow: React.FC<{ active?: boolean }> = ({ active: propActive = false }) => {
   const pointsRef = useRef<THREE.Points>(null);
   const burstLightRef = useRef<THREE.PointLight>(null);
   const burstLightIntensity = useRef(0);
+
+  const fireworksMode = useGameStore((s) => s.fireworksState.mode);
+  const countdown = useGameStore((s) => s.fireworksState.countdown);
+  const lastManualLaunch = useGameStore((s) => s.fireworksState.lastManualLaunch);
+  const lastBurstType = useGameStore((s) => s.fireworksState.lastBurstType);
+
+  const isScheduledActive = propActive || (fireworksMode === 'scheduled' && countdown === 0);
 
   const quality = useGameStore((s) => s.settings.graphicsQuality);
   const reducedMotion = useGameStore((s) => s.settings.reducedMotion);
@@ -373,11 +380,24 @@ export const FireworksShow: React.FC<{ active: boolean }> = ({ active }) => {
   const salvoCounter = useRef(0);
 
   useEffect(() => {
-    if (active) {
+    if (isScheduledActive) {
       showStartTime.current = null;
       salvoCounter.current = 0;
     }
-  }, [active]);
+  }, [isScheduledActive]);
+
+  // Player manual rocket trigger
+  const prevLaunchRef = useRef(0);
+  useEffect(() => {
+    if (lastManualLaunch > prevLaunchRef.current) {
+      prevLaunchRef.current = lastManualLaunch;
+      const targetX = (Math.random() - 0.5) * 16;
+      const targetZ = 8 + (Math.random() - 0.5) * 12;
+      const targetY = 24 + Math.random() * 8;
+      const colorIdx = Math.floor(Math.random() * PALETTE.length);
+      launchRocket(targetX, targetY, targetZ, lastBurstType || 'peony', colorIdx);
+    }
+  }, [lastManualLaunch, lastBurstType]);
 
   useFrame(({ clock }, delta) => {
     if (!pointsRef.current) return;
@@ -408,7 +428,7 @@ export const FireworksShow: React.FC<{ active: boolean }> = ({ active }) => {
       }
     }
 
-    if (active) {
+    if (isScheduledActive) {
       if (showStartTime.current === null) {
         showStartTime.current = now;
       }

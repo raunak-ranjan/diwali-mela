@@ -11,6 +11,9 @@ import { RingTossUI } from './components/ui/MiniGameOverlays/RingTossUI';
 import { StallsShopModal } from './components/ui/StallsShopModal';
 import { RangoliEditorUI } from './components/ui/RangoliEditorUI';
 import { FinaleModal } from './components/ui/FinaleModal';
+import { CulturalStageModal } from './components/ui/CulturalStageModal';
+import { FireworksControlModal } from './components/ui/FireworksControlModal';
+import { FerrisWheelRideOverlay } from './components/ui/FerrisWheelRideOverlay';
 import { SettingsModal } from './components/ui/SettingsModal';
 import { PauseMenu } from './components/ui/PauseMenu';
 import { RewardsProgressionModal } from './components/ui/RewardsProgressionModal';
@@ -80,6 +83,7 @@ export function App() {
       <VirtualJoystick />
       <InteractionPrompt />
       <VendorGreetingBanner />
+      <FerrisWheelRideOverlay />
 
       {/* Immediate Welcome Screen */}
       <WelcomeScreen />
@@ -90,6 +94,8 @@ export function App() {
       <StallsShopModal />
       <RangoliEditorUI />
       <FinaleModal />
+      <CulturalStageModal />
+      <FireworksControlModal />
       <SettingsModal />
       <PauseMenu />
       <RewardsProgressionModal />

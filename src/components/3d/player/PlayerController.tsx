@@ -17,6 +17,8 @@ export const PlayerController = () => {
   const setCurrentZone = useGameStore((s) => s.setCurrentZone);
   const activeModal = useGameStore((s) => s.activeModal);
   const openModal = useGameStore((s) => s.openModal);
+  const ferrisWheelRide = useGameStore((s) => s.ferrisWheelRide);
+  const exitFerrisWheel = useGameStore((s) => s.exitFerrisWheel);
 
   // Position and camera state
   const pos = useRef(new THREE.Vector3(0, 0, -20)); // Start right by the grand entrance threshold
@@ -44,16 +46,44 @@ export const PlayerController = () => {
     }
   }, []);
 
+  // Safe grounded dismount on exiting Ferris Wheel
+  const wasRidingRef = useRef(false);
+  useEffect(() => {
+    if (wasRidingRef.current && !ferrisWheelRide.isRiding) {
+      // Safely place player on grounded boardwalk steps beside attraction
+      pos.current.set(18.0, 0, 20.0);
+      velocity.current.set(0, 0, 0);
+      yaw.current = 0;
+      pitch.current = 0.12;
+      if (playerRef.current) {
+        playerRef.current.position.set(18.0, 0, 20.0);
+      }
+    }
+    wasRidingRef.current = ferrisWheelRide.isRiding;
+  }, [ferrisWheelRide.isRiding]);
+
   // Keyboard events
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't capture when typing or modal active (except Esc)
       if (e.key === 'Escape') {
         const currentModal = useGameStore.getState().activeModal;
+        const currentRide = useGameStore.getState().ferrisWheelRide;
+        if (currentRide.isRiding) {
+          exitFerrisWheel();
+          return;
+        }
         if (currentModal === 'none') {
           openModal('pause');
         } else if (currentModal === 'pause') {
           useGameStore.getState().closeModal();
+        }
+        return;
+      }
+
+      if (useGameStore.getState().ferrisWheelRide.isRiding) {
+        if (e.code === 'KeyE') {
+          exitFerrisWheel();
         }
         return;
       }
@@ -93,7 +123,7 @@ export const PlayerController = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [openModal]);
+  }, [openModal, exitFerrisWheel]);
 
   // Mouse camera rotation when dragging or moving
   useEffect(() => {
@@ -142,6 +172,45 @@ export const PlayerController = () => {
 
     const safeDelta = Math.min(delta, 0.05);
     const input = useInputStore.getState();
+
+    // Ferris Wheel riding camera & position lock
+    if (ferrisWheelRide.isRiding) {
+      if (input.touchLookDelta.x !== 0 || input.touchLookDelta.y !== 0) {
+        const touchSens = useGameStore.getState().settings.touchSensitivity;
+        yaw.current -= input.touchLookDelta.x * 0.006 * touchSens;
+        pitch.current = Math.max(
+          -0.6,
+          Math.min(0.8, pitch.current + input.touchLookDelta.y * 0.006 * touchSens)
+        );
+        input.resetTouchLookDelta();
+      }
+
+      // Wheel hub is at [24, 11, 20], radius 8.5, floor offset -1.8
+      const cabinIdx = ferrisWheelRide.cabinIndex || 0;
+      const angle = ferrisWheelRide.rotationAngle + (cabinIdx / 8) * Math.PI * 2;
+      const cabinX = 24 + Math.cos(angle) * 8.5;
+      const cabinY = 11 + Math.sin(angle) * 8.5 - 1.8;
+      const cabinZ = 20;
+
+      pos.current.set(cabinX, cabinY, cabinZ);
+      if (playerRef.current) {
+        playerRef.current.position.copy(pos.current);
+      }
+
+      // First-person panoramic riding camera
+      const camY = cabinY + 1.2;
+      camera.position.set(cabinX, camY, cabinZ);
+      const lookTarget = new THREE.Vector3(
+        cabinX - Math.cos(yaw.current) * 8,
+        camY + Math.sin(pitch.current) * 6,
+        cabinZ + Math.sin(yaw.current) * 8
+      );
+      camera.lookAt(lookTarget);
+
+      setPrompt(null);
+      return;
+    }
+
     const maxSpeed = 7.0;
     // How fast velocity ramps up and down (higher = snappier, lower = floatier)
     const accelFactor = 14.0;

@@ -7,6 +7,8 @@ import { useGameStore } from '../../../stores/useGameStore';
 
 export const CulturalStage = () => {
   const openModal = useGameStore((s) => s.openModal);
+  const isPlayingMusic = useGameStore((s) => s.culturalStageState.isPlayingMusic);
+  const lightingTheme = useGameStore((s) => s.culturalStageState.lightingTheme);
   const spotlightRef = useRef<THREE.SpotLight>(null);
 
   useEffect(() => {
@@ -19,10 +21,10 @@ export const CulturalStage = () => {
       position: [0, 1.0, 30.5],
       radius: 4.0,
       label: 'Diwali Cultural Sangeet Stage',
-      sublabel: 'Experience Indian Rhythms & Finale',
+      sublabel: 'Live Traditional Ragas & Concert Experience',
       actionType: 'stage',
       onInteract: () => {
-        openModal('finale');
+        openModal('stage');
       },
     });
 
@@ -31,11 +33,30 @@ export const CulturalStage = () => {
     };
   }, [openModal]);
 
-  // Stage Spotlight movement
+  // Stage Spotlight movement and animated concert lighting
   useFrame(({ clock }) => {
     if (spotlightRef.current) {
       const t = clock.getElapsedTime();
-      spotlightRef.current.position.x = Math.sin(t * 1.5) * 5;
+      if (isPlayingMusic) {
+        // Dynamic concert spotlight sweep
+        spotlightRef.current.position.x = Math.sin(t * 2.2) * 6;
+        spotlightRef.current.position.z = -2 + Math.cos(t * 1.8) * 1.5;
+        spotlightRef.current.intensity = 4.5 + Math.sin(t * 4.0) * 1.5;
+
+        // Theme colors
+        if (lightingTheme === 'peacock') {
+          spotlightRef.current.color.set(Math.sin(t) > 0 ? '#06b6d4' : '#d946ef');
+        } else if (lightingTheme === 'saffron') {
+          spotlightRef.current.color.set(Math.sin(t) > 0 ? '#ea580c' : '#fbbf24');
+        } else {
+          spotlightRef.current.color.set('#fef08a');
+        }
+      } else {
+        spotlightRef.current.position.x = Math.sin(t * 0.8) * 2;
+        spotlightRef.current.position.z = -2;
+        spotlightRef.current.intensity = 2.5;
+        spotlightRef.current.color.set('#fef08a');
+      }
     }
   });
 
