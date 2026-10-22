@@ -95,7 +95,8 @@ export type ActiveModalType =
   | 'finale'
   | 'settings'
   | 'pause'
-  | 'rewards';
+  | 'rewards'
+  | 'inventory';
 
 interface GameState {
   isLoaded: boolean;
@@ -121,6 +122,7 @@ interface GameState {
   };
   questNotification: QuestNotification | null;
   dailyDarshan: DailyDarshanState;
+  sparklerActiveUntil: number | null;
   balloonGame: {
     score: number;
     timeLeft: number;
@@ -150,6 +152,10 @@ interface GameState {
   closeModal: () => void;
   addTokens: (amount: number, source?: string) => void;
   purchaseItem: (itemId: string) => boolean;
+  consumeInventoryItem: (itemId: string) => { success: boolean; message: string };
+  lightSparkler: () => { success: boolean; message: string };
+  offerDiyaToShrine: () => { success: boolean; message: string };
+  stopSparkler: () => void;
   unlockCosmetic: (cosmeticId: string) => boolean;
   equipCosmetic: (cosmeticId: string | null) => boolean;
   dismissTokenDelta: () => void;
@@ -306,6 +312,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     lastCompletedDate: null,
     claimedDates: [],
   },
+  sparklerActiveUntil: null,
   balloonGame: {
     score: 0,
     timeLeft: 30,
@@ -381,6 +388,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       set({
         tokens: data.tokens,
         inventory: data.inventory.items,
+        sparklerActiveUntil: null,
         litDiyas: data.litDiyas,
         stats: data.stats,
         cosmetics: data.cosmetics || { unlocked: [], equipped: null },
@@ -522,6 +530,126 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
     persistState(get());
     return true;
+  },
+
+  consumeInventoryItem: (itemId: string) => {
+    const current = get();
+    const item = SHOP_CATALOG.find((i) => i.id === itemId);
+
+    // Only allow known sweets
+    const validSweets = ['gulab_jamun', 'kaju_katli', 'jalebi', 'motichoor_laddoo'];
+    if (!item || !validSweets.includes(itemId)) {
+      return { success: false, message: 'Only festival sweets can be consumed.' };
+    }
+
+    const currentCount = current.inventory[itemId] || 0;
+    if (currentCount <= 0) {
+      soundEngine.playErrorSound();
+      return { success: false, message: `You don't have any ${item.name} to eat.` };
+    }
+
+    const updatedInventory = {
+      ...current.inventory,
+      [itemId]: currentCount - 1,
+    };
+
+    soundEngine.playPurchaseSuccess();
+
+    const { updatedDaily, justCompletedAll } = applyDailyProgress(current.dailyDarshan, 'taste_sweet', 1);
+    if (justCompletedAll) soundEngine.playQuestChime();
+
+    set({
+      inventory: updatedInventory,
+      dailyDarshan: updatedDaily,
+      questNotification: justCompletedAll
+        ? {
+            id: `daily_all_completed_${Date.now()}`,
+            title: '✨ Daily Darshan Completed!',
+            message: 'All 3 daily objectives fulfilled! Claim your +25 🪙 daily set bonus.',
+            type: 'completed',
+            timestamp: Date.now(),
+          }
+        : current.questNotification,
+    });
+
+    persistState(get());
+    return {
+      success: true,
+      message: `Delicious! You enjoyed ${item.name}. ${item.blessing}`,
+    };
+  },
+
+  lightSparkler: () => {
+    const current = get();
+    const sparklerCount = current.inventory['phooljhadi'] || 0;
+    if (sparklerCount <= 0) {
+      soundEngine.playErrorSound();
+      return { success: false, message: 'You have no Golden Sparklers in your pouch.' };
+    }
+
+    if (current.sparklerActiveUntil && current.sparklerActiveUntil > Date.now()) {
+      return { success: false, message: 'Your Golden Sparkler is already glittering brightly!' };
+    }
+
+    const updatedInventory = {
+      ...current.inventory,
+      phooljhadi: sparklerCount - 1,
+    };
+
+    soundEngine.playDiyaLight();
+
+    set({
+      inventory: updatedInventory,
+      sparklerActiveUntil: Date.now() + 12000,
+    });
+
+    persistState(get());
+    return {
+      success: true,
+      message: '✨ Golden Sparkler ignited! Twinkling with festival stars for 12 seconds.',
+    };
+  },
+
+  offerDiyaToShrine: () => {
+    const current = get();
+    const clayCount = current.inventory['clay_diyas_set'] || 0;
+    const legacyCount = current.inventory['earthen_diya'] || 0;
+
+    if (clayCount <= 0 && legacyCount <= 0) {
+      soundEngine.playErrorSound();
+      return { success: false, message: 'You have no handcrafted clay diyas to offer.' };
+    }
+
+    // Deduct from legacy earthen_diya first if present, otherwise clay_diyas_set
+    const keyToDeduct = legacyCount > 0 ? 'earthen_diya' : 'clay_diyas_set';
+    const count = current.inventory[keyToDeduct] || 0;
+
+    const updatedInventory = {
+      ...current.inventory,
+      [keyToDeduct]: Math.max(0, count - 1),
+    };
+
+    const updatedStats: MiniGameStats = {
+      ...current.stats,
+      shrineOfferingsCount: (current.stats.shrineOfferingsCount || 0) + 1,
+    };
+
+    soundEngine.playDiyaLight();
+
+    set({
+      inventory: updatedInventory,
+      stats: updatedStats,
+    });
+
+    persistState(get());
+    return {
+      success: true,
+      message: '🪔 Sacred Diya offered to the eternal Akhand Jyoti! Auspicious festival blessings received.',
+    };
+  },
+
+  stopSparkler: () => {
+    set({ sparklerActiveUntil: null });
   },
 
   unlockCosmetic: (cosmeticId: string) => {
@@ -913,6 +1041,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             },
           ],
       recentTokenDelta: null,
+      sparklerActiveUntil: null,
       settings: resetData.settings,
       dailyDarshan: {
         date: today,

@@ -26,6 +26,7 @@ export const DEFAULT_SAVE_DATA: SaveDataV1 = {
     fireworksWatchedCount: 0,
     magicalDiyasCollected: 0,
     questCompleted: false,
+    shrineOfferingsCount: 0,
   },
   litDiyas: [],
   quest: {
@@ -240,10 +241,23 @@ export class LocalSaveRepository implements ISaveRepository {
       ? data.tokens
       : defaultSave.tokens;
 
-    // Sanitize inventory
-    const items = data.inventory && typeof data.inventory.items === 'object' && data.inventory.items !== null
-      ? { ...defaultSave.inventory.items, ...data.inventory.items }
-      : defaultSave.inventory.items;
+    // Sanitize inventory: retain explicitly stored quantities, guaranteeing non-negative integers
+    // Do not re-seed items from defaultSave if they were consumed down to 0
+    let items: Record<string, number> = {};
+    if (data.inventory && typeof data.inventory.items === 'object' && data.inventory.items !== null) {
+      for (const [key, val] of Object.entries(data.inventory.items)) {
+        if (typeof val === 'number' && !isNaN(val)) {
+          items[key] = Math.max(0, Math.floor(val));
+        }
+      }
+      for (const [defKey, defVal] of Object.entries(defaultSave.inventory.items)) {
+        if (!(defKey in data.inventory.items)) {
+          items[defKey] = defVal;
+        }
+      }
+    } else {
+      items = { ...defaultSave.inventory.items };
+    }
 
     // Sanitize lit diyas (deduplicate array)
     const litDiyas: string[] = Array.isArray(data.litDiyas)
@@ -268,6 +282,9 @@ export class LocalSaveRepository implements ISaveRepository {
         : tokens,
       fireworksWatchedCount: typeof rawStats.fireworksWatchedCount === 'number' && rawStats.fireworksWatchedCount >= 0
         ? rawStats.fireworksWatchedCount
+        : 0,
+      shrineOfferingsCount: typeof rawStats.shrineOfferingsCount === 'number' && rawStats.shrineOfferingsCount >= 0
+        ? rawStats.shrineOfferingsCount
         : 0,
     };
 

@@ -6,6 +6,7 @@ import { useInputStore } from '../../../stores/useInputStore';
 import { collisionSystem } from '../../../systems/collision';
 import { interactionRegistry } from '../../../systems/interactionRegistry';
 import { PlayerCosmetics } from './PlayerCosmetics';
+import { PlayerSparkler } from './PlayerSparkler';
 
 export const PlayerController = () => {
   const { camera } = useThree();
@@ -71,6 +72,10 @@ export const PlayerController = () => {
           const nearest = interactionRegistry.findNearest(pos.current);
           if (nearest) nearest.onInteract();
         }
+      }
+
+      if (e.code === 'KeyI' || e.code === 'KeyB') {
+        openModal('inventory');
       }
     };
 
@@ -363,6 +368,9 @@ export const PlayerController = () => {
 
       {/* Active Unlocked Cosmetic Effect */}
       <PlayerCosmetics />
+
+      {/* Active Golden Sparkler Effect */}
+      <PlayerSparkler />
     </group>
   );
 };

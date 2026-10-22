@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { useGameStore } from '../../stores/useGameStore';
 import { useInputStore } from '../../stores/useInputStore';
 import { soundEngine } from '../../audio/soundEngine';
-import { Coins, Volume2, VolumeX, Settings, Sparkles, Award } from 'lucide-react';
+import { Coins, Volume2, VolumeX, Settings, Sparkles, Award, ShoppingBag } from 'lucide-react';
 import { QuestTracker } from './QuestTracker';
 
 export const HUD: React.FC = () => {
@@ -14,6 +14,12 @@ export const HUD: React.FC = () => {
   const updateSettings = useGameStore((s) => s.updateSettings);
   const recentTokenDelta = useGameStore((s) => s.recentTokenDelta);
   const dismissTokenDelta = useGameStore((s) => s.dismissTokenDelta);
+  const inventory = useGameStore((s) => s.inventory);
+
+  const totalInventoryItems = Object.values(inventory).reduce(
+    (acc, count) => acc + (typeof count === 'number' && count > 0 ? count : 0),
+    0
+  );
 
   const addTouchLookDelta = useInputStore((s) => s.addTouchLookDelta);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -99,6 +105,21 @@ export const HUD: React.FC = () => {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2 pointer-events-auto">
+          {/* Festival Pouch Quick Trigger */}
+          <button
+            onClick={() => openModal('inventory')}
+            role="button"
+            aria-label={`Open Festival Pouch (${totalInventoryItems} items)`}
+            title="Open Festival Pouch & Inventory"
+            className="flex items-center gap-1.5 bg-gradient-to-r from-amber-700 via-amber-800 to-amber-900 hover:brightness-110 active:scale-95 transition-all text-white text-xs font-bold py-2 px-3 rounded-full shadow-lg border border-festive-gold/60 cursor-pointer"
+          >
+            <ShoppingBag className="w-4 h-4 text-festive-gold" />
+            <span className="hidden xs:inline">Pouch</span>
+            <span className="text-[10px] bg-festive-gold/20 text-amber-200 px-1.5 py-0.2 rounded-full font-mono">
+              {totalInventoryItems}
+            </span>
+          </button>
+
           {/* Rewards & Progression Quick Trigger */}
           <button
             onClick={() => openModal('rewards')}

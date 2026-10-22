@@ -46,6 +46,7 @@ export interface MiniGameStats {
   questCompleted?: boolean;
   dailyStreak?: number;
   dailySetsCompleted?: number;
+  shrineOfferingsCount?: number;
 }
 
 export interface QuestProgress {

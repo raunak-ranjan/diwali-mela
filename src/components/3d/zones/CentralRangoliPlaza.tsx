@@ -24,8 +24,22 @@ export const CentralRangoliPlaza: React.FC = () => {
       },
     });
 
+    // Register interaction for Sacred Akhand Jyoti Diya Offering
+    interactionRegistry.register({
+      id: 'akhand_jyoti_shrine_offering',
+      position: [0, 0, -2.2],
+      radius: 3.5,
+      label: 'Sacred Akhand Jyoti Shrine',
+      sublabel: 'Offer Handcrafted Diya from Pouch',
+      actionType: 'diya',
+      onInteract: () => {
+        openModal('inventory');
+      },
+    });
+
     return () => {
       interactionRegistry.unregister('central_rangoli_challenge');
+      interactionRegistry.unregister('akhand_jyoti_shrine_offering');
     };
   }, [openModal]);
 

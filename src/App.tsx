@@ -13,6 +13,7 @@ import { FinaleModal } from './components/ui/FinaleModal';
 import { SettingsModal } from './components/ui/SettingsModal';
 import { PauseMenu } from './components/ui/PauseMenu';
 import { RewardsProgressionModal } from './components/ui/RewardsProgressionModal';
+import { FestivalPouchModal } from './components/ui/FestivalPouchModal';
 import { useGameStore } from './stores/useGameStore';
 import { useInputStore } from './stores/useInputStore';
 
@@ -88,6 +89,7 @@ export function App() {
       <SettingsModal />
       <PauseMenu />
       <RewardsProgressionModal />
+      <FestivalPouchModal />
     </div>
   );
 }
