@@ -1,5 +1,6 @@
 import React, { useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { useFrame } from '@react-three/fiber';
 import { useGameStore } from '../../../stores/useGameStore';
 
@@ -15,10 +16,14 @@ export const MarigoldGarland: React.FC<{
   const garlandRef = useRef<THREE.Group>(null);
   const reducedMotion = useGameStore((s) => s.settings.reducedMotion);
 
-  const flowers = useMemo(() => {
-    const list: Array<{ pos: [number, number, number]; color: string }> = [];
-    const orange = '#ea580c';
-    const yellow = '#f59e0b';
+  // Batch orange and yellow blossoms and leaves into 3 merged geometries (cuts ~20 draw calls per garland)
+  const { orangeGeo, yellowGeo, leavesGeo } = useMemo(() => {
+    const orangeGeos: THREE.BufferGeometry[] = [];
+    const yellowGeos: THREE.BufferGeometry[] = [];
+    const leafGeos: THREE.BufferGeometry[] = [];
+
+    const blossomBase = new THREE.DodecahedronGeometry(flowerSize, 1);
+    const leafBase = new THREE.BoxGeometry(flowerSize * 0.8, flowerSize * 0.25, flowerSize * 1.5);
 
     for (let i = 0; i <= count; i++) {
       const t = i / count;
@@ -28,13 +33,28 @@ export const MarigoldGarland: React.FC<{
       // Parabolic catenary sag
       const y = yBase - Math.sin(t * Math.PI) * sag;
 
-      list.push({
-        pos: [x, y, z],
-        color: i % 2 === 0 ? orange : yellow,
-      });
+      const flowerGeo = blossomBase.clone().translate(x, y, z);
+      if (i % 2 === 0) {
+        orangeGeos.push(flowerGeo);
+      } else {
+        yellowGeos.push(flowerGeo);
+      }
+
+      // Green Leaf Accent on every 3rd flower
+      if (i % 3 === 0) {
+        const leaf = leafBase.clone();
+        leaf.rotateZ(0.4);
+        leaf.translate(x, y + flowerSize * 0.7, z);
+        leafGeos.push(leaf);
+      }
     }
-    return list;
-  }, [start, end, sag, count]);
+
+    return {
+      orangeGeo: BufferGeometryUtils.mergeGeometries(orangeGeos) || null,
+      yellowGeo: BufferGeometryUtils.mergeGeometries(yellowGeos) || null,
+      leavesGeo: leafGeos.length > 0 ? BufferGeometryUtils.mergeGeometries(leafGeos) : null,
+    };
+  }, [start, end, sag, count, flowerSize]);
 
   // Subtle living festive sway in gentle evening breeze
   useFrame(({ clock }) => {
@@ -46,26 +66,29 @@ export const MarigoldGarland: React.FC<{
 
   return (
     <group ref={garlandRef}>
-      {flowers.map((f, idx) => (
-        <group key={idx} position={f.pos}>
-          {/* Flower Blossom Head */}
-          <mesh castShadow>
-            <dodecahedronGeometry args={[flowerSize, 1]} />
-            <meshStandardMaterial
-              color={f.color}
-              roughness={0.8}
-              metalness={0.05}
-            />
-          </mesh>
-          {/* Green Leaf Accent on every 3rd flower */}
-          {idx % 3 === 0 && (
-            <mesh position={[0, flowerSize * 0.7, 0]} rotation={[0, 0, 0.4]}>
-              <boxGeometry args={[flowerSize * 0.8, flowerSize * 0.25, flowerSize * 1.5]} />
-              <meshStandardMaterial color="#15803d" roughness={0.7} />
-            </mesh>
-          )}
-        </group>
-      ))}
+      {orangeGeo && (
+        <mesh geometry={orangeGeo} castShadow>
+          <meshStandardMaterial
+            color="#ea580c"
+            roughness={0.8}
+            metalness={0.05}
+          />
+        </mesh>
+      )}
+      {yellowGeo && (
+        <mesh geometry={yellowGeo} castShadow>
+          <meshStandardMaterial
+            color="#f59e0b"
+            roughness={0.8}
+            metalness={0.05}
+          />
+        </mesh>
+      )}
+      {leavesGeo && (
+        <mesh geometry={leavesGeo}>
+          <meshStandardMaterial color="#15803d" roughness={0.7} />
+        </mesh>
+      )}
     </group>
   );
 };
@@ -100,47 +123,59 @@ export const BrassThali: React.FC<{ radius?: number }> = ({ radius = 0.45 }) => 
 export const LaddooPlate: React.FC<{ position?: [number, number, number] }> = ({
   position = [0, 0, 0],
 }) => {
-  const laddooPositions: Array<[number, number, number]> = useMemo(() => {
-    const list: Array<[number, number, number]> = [];
+  const { laddooGeo, speckGeo } = useMemo(() => {
+    const laddoos: THREE.BufferGeometry[] = [];
+    const specks: THREE.BufferGeometry[] = [];
+
+    const laddooBase = new THREE.DodecahedronGeometry(0.055, 1);
+    const speckBase = new THREE.BoxGeometry(0.015, 0.015, 0.015);
+
+    const laddooPositions: Array<[number, number, number]> = [];
     // Base ring (7 laddoos)
     for (let i = 0; i < 7; i++) {
       const angle = (i / 7) * Math.PI * 2;
-      list.push([Math.cos(angle) * 0.16, 0.06, Math.sin(angle) * 0.16]);
+      laddooPositions.push([Math.cos(angle) * 0.16, 0.06, Math.sin(angle) * 0.16]);
     }
     // Inner center base
-    list.push([0, 0.06, 0]);
+    laddooPositions.push([0, 0.06, 0]);
     // Middle tier (4 laddoos)
     for (let i = 0; i < 4; i++) {
       const angle = (i / 4) * Math.PI * 2 + 0.4;
-      list.push([Math.cos(angle) * 0.09, 0.14, Math.sin(angle) * 0.09]);
+      laddooPositions.push([Math.cos(angle) * 0.09, 0.14, Math.sin(angle) * 0.09]);
     }
     // Top crown laddoo
-    list.push([0, 0.22, 0]);
-    return list;
+    laddooPositions.push([0, 0.22, 0]);
+
+    laddooPositions.forEach((pos, idx) => {
+      laddoos.push(laddooBase.clone().translate(pos[0], pos[1], pos[2]));
+      if (idx % 2 === 0) {
+        specks.push(speckBase.clone().translate(pos[0], pos[1] + 0.05, pos[2]));
+      }
+    });
+
+    return {
+      laddooGeo: BufferGeometryUtils.mergeGeometries(laddoos) || null,
+      speckGeo: specks.length > 0 ? BufferGeometryUtils.mergeGeometries(specks) : null,
+    };
   }, []);
 
   return (
     <group position={position}>
       <BrassThali radius={0.32} />
-      {laddooPositions.map((pos, idx) => (
-        <group key={idx} position={pos}>
-          <mesh castShadow>
-            <dodecahedronGeometry args={[0.055, 1]} />
-            <meshStandardMaterial
-              color="#f59e0b" // Saffron gold boondi
-              roughness={0.7}
-              metalness={0.08}
-            />
-          </mesh>
-          {/* Pistachio / Silver speck */}
-          {idx % 2 === 0 && (
-            <mesh position={[0, 0.05, 0]}>
-              <boxGeometry args={[0.015, 0.015, 0.015]} />
-              <meshStandardMaterial color="#84cc16" roughness={0.6} />
-            </mesh>
-          )}
-        </group>
-      ))}
+      {laddooGeo && (
+        <mesh geometry={laddooGeo} castShadow>
+          <meshStandardMaterial
+            color="#f59e0b" // Saffron gold boondi
+            roughness={0.7}
+            metalness={0.08}
+          />
+        </mesh>
+      )}
+      {speckGeo && (
+        <mesh geometry={speckGeo}>
+          <meshStandardMaterial color="#84cc16" roughness={0.6} />
+        </mesh>
+      )}
     </group>
   );
 };
@@ -149,45 +184,43 @@ export const LaddooPlate: React.FC<{ position?: [number, number, number] }> = ({
 export const JalebiPlate: React.FC<{ position?: [number, number, number] }> = ({
   position = [0, 0, 0],
 }) => {
-  const jalebis: Array<{ pos: [number, number, number]; rot: number }> = useMemo(() => {
-    return [
+  const jalebiGeo = useMemo(() => {
+    const outer = new THREE.TorusGeometry(0.08, 0.022, 8, 16);
+    const inner = new THREE.TorusGeometry(0.045, 0.02, 8, 12);
+    inner.translate(0.02, 0.01, 0);
+    const singleJalebi = BufferGeometryUtils.mergeGeometries([outer, inner]) || outer;
+
+    const jalebis: Array<{ pos: [number, number, number]; rot: number }> = [
       { pos: [-0.1, 0.04, -0.08], rot: 0.2 },
       { pos: [0.12, 0.04, -0.05], rot: 0.9 },
       { pos: [-0.08, 0.04, 0.1], rot: 1.7 },
       { pos: [0.09, 0.04, 0.09], rot: 2.4 },
       { pos: [0.0, 0.07, 0.0], rot: 0.6 },
     ];
+
+    const geos = jalebis.map((j) => {
+      const g = singleJalebi.clone();
+      g.rotateY(j.rot);
+      g.translate(j.pos[0], j.pos[1], j.pos[2]);
+      return g;
+    });
+    return BufferGeometryUtils.mergeGeometries(geos) || null;
   }, []);
 
   return (
     <group position={position}>
       <BrassThali radius={0.32} />
-      {jalebis.map((j, idx) => (
-        <group key={idx} position={j.pos} rotation={[0, j.rot, 0]}>
-          {/* Outer spiral ring */}
-          <mesh castShadow>
-            <torusGeometry args={[0.08, 0.022, 8, 16]} />
-            <meshStandardMaterial
-              color="#ea580c"
-              emissive="#f59e0b"
-              emissiveIntensity={0.25}
-              roughness={0.25}
-              metalness={0.15}
-            />
-          </mesh>
-          {/* Inner spiral loop */}
-          <mesh position={[0.02, 0.01, 0]}>
-            <torusGeometry args={[0.045, 0.02, 8, 12]} />
-            <meshStandardMaterial
-              color="#ea580c"
-              emissive="#f59e0b"
-              emissiveIntensity={0.25}
-              roughness={0.25}
-              metalness={0.15}
-            />
-          </mesh>
-        </group>
-      ))}
+      {jalebiGeo && (
+        <mesh geometry={jalebiGeo} castShadow>
+          <meshStandardMaterial
+            color="#ea580c"
+            emissive="#f59e0b"
+            emissiveIntensity={0.25}
+            roughness={0.25}
+            metalness={0.15}
+          />
+        </mesh>
+      )}
     </group>
   );
 };
@@ -196,13 +229,18 @@ export const JalebiPlate: React.FC<{ position?: [number, number, number] }> = ({
 export const GulabJamunHandi: React.FC<{ position?: [number, number, number] }> = ({
   position = [0, 0, 0],
 }) => {
-  const jamuns: Array<[number, number, number]> = [
-    [-0.08, 0.16, -0.07],
-    [0.08, 0.16, -0.06],
-    [-0.07, 0.16, 0.08],
-    [0.07, 0.16, 0.07],
-    [0, 0.18, 0],
-  ];
+  const jamunGeo = useMemo(() => {
+    const jamuns: Array<[number, number, number]> = [
+      [-0.08, 0.16, -0.07],
+      [0.08, 0.16, -0.06],
+      [-0.07, 0.16, 0.08],
+      [0.07, 0.16, 0.07],
+      [0, 0.18, 0],
+    ];
+    const base = new THREE.SphereGeometry(0.065, 12, 12);
+    const geos = jamuns.map((pos) => base.clone().translate(pos[0], pos[1], pos[2]));
+    return BufferGeometryUtils.mergeGeometries(geos) || null;
+  }, []);
 
   return (
     <group position={position}>
@@ -230,16 +268,15 @@ export const GulabJamunHandi: React.FC<{ position?: [number, number, number] }> 
         />
       </mesh>
       {/* Plump Dark Brown Gulab Jamuns */}
-      {jamuns.map((pos, idx) => (
-        <mesh key={idx} position={pos} castShadow>
-          <sphereGeometry args={[0.065, 12, 12]} />
+      {jamunGeo && (
+        <mesh geometry={jamunGeo} castShadow>
           <meshStandardMaterial
             color="#271105" // Deep fried milk solid dumplings
             roughness={0.35}
             metalness={0.1}
           />
         </mesh>
-      ))}
+      )}
     </group>
   );
 };
@@ -248,13 +285,23 @@ export const GulabJamunHandi: React.FC<{ position?: [number, number, number] }> 
 export const SamosaKadhai: React.FC<{ position?: [number, number, number] }> = ({
   position = [0, 0, 0],
 }) => {
-  const samosas: Array<{ pos: [number, number, number]; rot: number }> = [
-    { pos: [-0.15, 0.18, -0.1], rot: 0.3 },
-    { pos: [0.16, 0.18, -0.08], rot: 1.1 },
-    { pos: [-0.08, 0.18, 0.14], rot: 2.2 },
-    { pos: [0.12, 0.18, 0.12], rot: 0.7 },
-    { pos: [0.0, 0.2, 0.0], rot: 1.9 },
-  ];
+  const samosaGeo = useMemo(() => {
+    const samosas: Array<{ pos: [number, number, number]; rot: number }> = [
+      { pos: [-0.15, 0.18, -0.1], rot: 0.3 },
+      { pos: [0.16, 0.18, -0.08], rot: 1.1 },
+      { pos: [-0.08, 0.18, 0.14], rot: 2.2 },
+      { pos: [0.12, 0.18, 0.12], rot: 0.7 },
+      { pos: [0.0, 0.2, 0.0], rot: 1.9 },
+    ];
+    const base = new THREE.ConeGeometry(0.08, 0.12, 3);
+    const geos = samosas.map((s) => {
+      const g = base.clone();
+      g.rotateY(s.rot);
+      g.translate(s.pos[0], s.pos[1], s.pos[2]);
+      return g;
+    });
+    return BufferGeometryUtils.mergeGeometries(geos) || null;
+  }, []);
 
   return (
     <group position={position}>
@@ -289,18 +336,15 @@ export const SamosaKadhai: React.FC<{ position?: [number, number, number] }> = (
       </mesh>
 
       {/* Golden Samosas */}
-      {samosas.map((s, idx) => (
-        <group key={idx} position={s.pos} rotation={[0, s.rot, 0]}>
-          <mesh castShadow>
-            <coneGeometry args={[0.08, 0.12, 3]} />
-            <meshStandardMaterial
-              color="#b45309" // Golden fried pastry
-              roughness={0.65}
-              metalness={0.1}
-            />
-          </mesh>
-        </group>
-      ))}
+      {samosaGeo && (
+        <mesh geometry={samosaGeo} castShadow>
+          <meshStandardMaterial
+            color="#b45309" // Golden fried pastry
+            roughness={0.65}
+            metalness={0.1}
+          />
+        </mesh>
+      )}
 
       {/* Long Slotted Skimmer / Spatula resting on kadhai */}
       <mesh position={[0.3, 0.42, 0.2]} rotation={[0.4, 0.5, 0.8]} castShadow>
