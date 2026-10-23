@@ -2,6 +2,7 @@ import { useMemo, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { useGameStore } from '../../../stores/useGameStore';
+import { useInputStore } from '../../../stores/useInputStore';
 import { interactionRegistry } from '../../../systems/interactionRegistry';
 
 interface DiyaInfo {
@@ -69,24 +70,34 @@ export const InstancedDiyas = () => {
     };
   }, [diyaPositions, lightDiya]);
 
+  const quality = useGameStore((s) => s.settings.graphicsQuality);
+  const isTouchDevice = useInputStore((s) => s.isTouchDevice);
+
   const clayMeshRef = useRef<THREE.InstancedMesh>(null);
   const flameMeshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
 
-  // Update matrices and animate flame flickers with organic multi-harmonic frequencies
+  // Set static clay lamp base matrices once on mount or when positions change
+  useEffect(() => {
+    if (!clayMeshRef.current) return;
+    const tempDummy = new THREE.Object3D();
+    diyaPositions.forEach((diya, i) => {
+      tempDummy.position.set(diya.pos[0], diya.pos[1], diya.pos[2]);
+      tempDummy.scale.set(0.25, 0.12, 0.25);
+      tempDummy.rotation.set(0, (i * 0.4) % Math.PI, 0);
+      tempDummy.updateMatrix();
+      clayMeshRef.current!.setMatrixAt(i, tempDummy.matrix);
+    });
+    clayMeshRef.current.instanceMatrix.needsUpdate = true;
+  }, [diyaPositions]);
+
+  // Animate flame flickers with organic multi-harmonic frequencies
   useFrame(({ clock }) => {
-    if (!clayMeshRef.current || !flameMeshRef.current) return;
+    if (!flameMeshRef.current) return;
     const time = clock.getElapsedTime();
 
     diyaPositions.forEach((diya, i) => {
       const isActuallyLit = diya.isLit || litDiyas.includes(diya.id);
-
-      // Base clay lamp
-      dummy.position.set(diya.pos[0], diya.pos[1], diya.pos[2]);
-      dummy.scale.set(0.25, 0.12, 0.25);
-      dummy.rotation.set(0, (i * 0.4) % Math.PI, 0);
-      dummy.updateMatrix();
-      clayMeshRef.current!.setMatrixAt(i, dummy.matrix);
 
       // Organic dancing flame with gentle flutter
       if (isActuallyLit) {
@@ -107,7 +118,6 @@ export const InstancedDiyas = () => {
       flameMeshRef.current!.setMatrixAt(i, dummy.matrix);
     });
 
-    clayMeshRef.current.instanceMatrix.needsUpdate = true;
     flameMeshRef.current.instanceMatrix.needsUpdate = true;
   });
 
@@ -117,7 +127,7 @@ export const InstancedDiyas = () => {
       <instancedMesh
         ref={clayMeshRef}
         args={[undefined, undefined, diyaPositions.length]}
-        castShadow
+        castShadow={!isTouchDevice && quality === 'high'}
         receiveShadow
       >
         <cylinderGeometry args={[0.9, 0.4, 0.6, 12]} />

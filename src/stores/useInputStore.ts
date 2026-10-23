@@ -18,6 +18,15 @@ interface InputState {
   setIsTouchDevice: (val: boolean) => void;
 }
 
+const detectTouchSync = () => {
+  if (typeof window === 'undefined') return false;
+  return (
+    'ontouchstart' in window ||
+    navigator.maxTouchPoints > 0 ||
+    Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
+  );
+};
+
 export const useInputStore = create<InputState>((set) => ({
   forward: false,
   backward: false,
@@ -26,7 +35,7 @@ export const useInputStore = create<InputState>((set) => ({
   interact: false,
   joystickVector: { x: 0, y: 0 },
   touchLookDelta: { x: 0, y: 0 },
-  isTouchDevice: false,
+  isTouchDevice: detectTouchSync(),
 
   setKey: (key, state) => set((s) => ({ ...s, [key]: state })),
   setJoystickVector: (x, y) => set({ joystickVector: { x, y } }),

@@ -44,7 +44,9 @@ export const FerrisWheel: React.FC = () => {
       const speed = reducedMotion ? 0.04 : 0.18;
       wheelRef.current.rotation.z += safeDelta * speed;
       const currentAngle = wheelRef.current.rotation.z;
-      updateFerrisWheelAngle(currentAngle);
+      if (useGameStore.getState().ferrisWheelRide.isRiding) {
+        updateFerrisWheelAngle(currentAngle);
+      }
       const t = clock.getElapsedTime();
 
       // Keep passenger cabins hanging vertically downwards under gravity

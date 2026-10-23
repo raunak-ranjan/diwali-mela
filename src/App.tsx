@@ -19,6 +19,7 @@ import { PauseMenu } from './components/ui/PauseMenu';
 import { RewardsProgressionModal } from './components/ui/RewardsProgressionModal';
 import { FestivalPouchModal } from './components/ui/FestivalPouchModal';
 import { VendorGreetingBanner } from './components/ui/VendorGreetingBanner';
+import { DevPerformanceTracker, DevPerformanceOverlay } from './components/dev/DevPerformanceTelemetry';
 import { useGameStore } from './stores/useGameStore';
 import { useInputStore } from './stores/useInputStore';
 
@@ -33,7 +34,10 @@ export function App() {
     initializeSave();
 
     // Check touch capabilities
-    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const isTouch =
+      'ontouchstart' in window ||
+      navigator.maxTouchPoints > 0 ||
+      Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     setIsTouchDevice(isTouch);
 
     // Expose for testing & debug inspection
@@ -47,10 +51,10 @@ export function App() {
     return <LoadingScreen />;
   }
 
-  // Device-aware responsive pixel ratio: mobile caps at 1.5 to protect battery and fill-rate
+  // Device-aware responsive pixel ratio: mobile caps at 1.2 to protect fill-rate and battery
   const maxDpr = isTouchDevice
     ? quality === 'high'
-      ? 1.5
+      ? 1.2
       : 1.0
     : quality === 'high'
     ? 2.0
@@ -63,18 +67,20 @@ export function App() {
     <div className="relative w-full h-full overflow-hidden bg-[#060913]">
       {/* 3D WebGL Canvas */}
       <Canvas
-        shadows={quality !== 'low'}
+        shadows={!isTouchDevice && quality !== 'low'}
         dpr={dpr}
         camera={{ position: [0, 2.3, -25], fov: 60 }}
         gl={{
-          antialias: quality !== 'low',
+          antialias: !isTouchDevice && quality === 'high',
           powerPreference: 'high-performance',
           stencil: false,
+          depth: true,
         }}
         onCreated={({ gl }) => {
           gl.toneMappingExposure = 1.35;
         }}
       >
+        {import.meta.env.DEV && <DevPerformanceTracker />}
         <MelaScene />
       </Canvas>
 
@@ -84,6 +90,7 @@ export function App() {
       <InteractionPrompt />
       <VendorGreetingBanner />
       <FerrisWheelRideOverlay />
+      {import.meta.env.DEV && <DevPerformanceOverlay />}
 
       {/* Immediate Welcome Screen */}
       <WelcomeScreen />

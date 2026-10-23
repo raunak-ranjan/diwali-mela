@@ -11,6 +11,7 @@ import {
 } from '../types/daily';
 import { saveRepository } from '../systems/saveRepository';
 import { soundEngine } from '../audio/soundEngine';
+import { useInputStore } from './useInputStore';
 
 export const SHOP_CATALOG: ShopItem[] = [
   {
@@ -393,7 +394,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     lastBurstType: 'peony',
   },
   settings: {
-    graphicsQuality: 'high',
+    graphicsQuality: (typeof window !== 'undefined' && useInputStore.getState().isTouchDevice) ? 'medium' : 'high',
     masterVolume: 0.8,
     sfxVolume: 0.8,
     musicVolume: 0.6,
@@ -404,6 +405,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   initializeSave: async () => {
     try {
       const data = await saveRepository.load();
+      const hasSaved = typeof saveRepository.hasSavedData === 'function' ? saveRepository.hasSavedData() : false;
+      const isTouch = useInputStore.getState().isTouchDevice;
+      const restoredSettings = {
+        ...data.settings,
+        graphicsQuality: (!hasSaved && isTouch) ? 'medium' : data.settings.graphicsQuality,
+      };
       const today = getCalendarDateString();
       const rawDaily = data.dailyDarshan;
       let restoredDaily: DailyDarshanState;
@@ -469,7 +476,7 @@ export const useGameStore = create<GameState>((set, get) => ({
                 timestamp: Date.now(),
               },
             ],
-        settings: data.settings,
+        settings: restoredSettings,
         dailyDarshan: restoredDaily,
         quest: {
           id: 'five_sacred_diyas',
@@ -496,7 +503,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         },
         isLoaded: true,
       });
-      soundEngine.setVolumes(data.settings.masterVolume, data.settings.sfxVolume, data.settings.musicVolume);
+      soundEngine.setVolumes(restoredSettings.masterVolume, restoredSettings.sfxVolume, restoredSettings.musicVolume);
     } catch (err) {
       console.error('[GameStore] Error during initializeSave, falling back safely:', err);
       // Ensure application never hangs indefinitely
@@ -511,10 +518,27 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   setCurrentZone: (zone: GameZone) => {
+    if (get().currentZone === zone) return;
     set({ currentZone: zone });
   },
 
   setPrompt: (prompt) => {
+    const current = get().prompt;
+    if (current === prompt) return;
+    if (
+      current &&
+      prompt &&
+      current.active === prompt.active &&
+      current.id === prompt.id &&
+      current.label === prompt.label &&
+      current.sublabel === prompt.sublabel &&
+      current.actionType === prompt.actionType &&
+      current.position?.[0] === prompt.position?.[0] &&
+      current.position?.[1] === prompt.position?.[1] &&
+      current.position?.[2] === prompt.position?.[2]
+    ) {
+      return;
+    }
     set({ prompt });
   },
 
@@ -1113,6 +1137,11 @@ export const useGameStore = create<GameState>((set, get) => ({
   resetProgress: async () => {
     const resetData = await saveRepository.reset();
     const today = getCalendarDateString();
+    const isTouch = useInputStore.getState().isTouchDevice;
+    const resetSettings = {
+      ...resetData.settings,
+      graphicsQuality: isTouch ? 'medium' : resetData.settings.graphicsQuality,
+    };
     set({
       tokens: resetData.tokens,
       inventory: resetData.inventory.items,
@@ -1131,7 +1160,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           ],
       recentTokenDelta: null,
       sparklerActiveUntil: null,
-      settings: resetData.settings,
+      settings: resetSettings,
       dailyDarshan: {
         date: today,
         challenges: generateDailyChallenges(today),
@@ -1166,7 +1195,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         hitsCount: 0,
       },
     });
-    soundEngine.setVolumes(resetData.settings.masterVolume, resetData.settings.sfxVolume, resetData.settings.musicVolume);
+    soundEngine.setVolumes(resetSettings.masterVolume, resetSettings.sfxVolume, resetSettings.musicVolume);
   },
 
   startBalloonGame: () => {
@@ -1432,12 +1461,14 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   updateFerrisWheelAngle: (angle: number) => {
-    set((s) => ({
+    const current = get().ferrisWheelRide;
+    if (Math.abs(current.rotationAngle - angle) < 0.0001) return;
+    set({
       ferrisWheelRide: {
-        ...s.ferrisWheelRide,
+        ...current,
         rotationAngle: angle,
       },
-    }));
+    });
   },
 
   // Attractions: Cultural Stage

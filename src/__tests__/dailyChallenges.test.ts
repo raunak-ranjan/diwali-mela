@@ -7,6 +7,7 @@ import {
   isConsecutiveDay,
   DAILY_BONUS_TOKENS,
   CHALLENGE_TEMPLATES,
+  getCalendarDateString,
 } from '../types/daily';
 
 describe('Milestone 2: Festival Darshan Daily Challenges', () => {
@@ -145,7 +146,7 @@ describe('Milestone 2: Festival Darshan Daily Challenges', () => {
   it('updates balloon shooting score and hit challenges correctly', () => {
     useGameStore.setState({
       dailyDarshan: {
-        date: '2026-10-22',
+        date: getCalendarDateString(),
         challenges: [
           {
             id: 'ch_balloon_score',
@@ -211,7 +212,7 @@ describe('Milestone 2: Festival Darshan Daily Challenges', () => {
   it('updates bazaar sweets purchase and attraction visit challenges', () => {
     useGameStore.setState({
       dailyDarshan: {
-        date: '2026-10-22',
+        date: getCalendarDateString(),
         challenges: [
           {
             id: 'ch_taste_sweet',
@@ -260,7 +261,7 @@ describe('Milestone 2: Festival Darshan Daily Challenges', () => {
         rangoliCompleted: true, // already completed previously
       },
       dailyDarshan: {
-        date: '2026-10-22',
+        date: getCalendarDateString(),
         challenges: [
           {
             id: 'ch_rangoli_art',

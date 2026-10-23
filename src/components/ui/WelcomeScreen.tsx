@@ -9,7 +9,7 @@ export const WelcomeScreen: React.FC = () => {
   if (activeModal !== 'welcome') return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 animate-fadeIn">
       <div className="relative max-w-xl w-full bg-gradient-to-b from-festive-nightBlue to-festive-deepNavy border-2 border-festive-gold/60 rounded-2xl shadow-2xl p-6 md:p-8 text-center text-white overflow-hidden">
         {/* Decorative corner orbs */}
         <div className="absolute top-0 left-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
