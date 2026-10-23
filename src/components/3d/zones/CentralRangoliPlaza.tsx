@@ -1,11 +1,216 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useGameStore } from '../../../stores/useGameStore';
+import { useInputStore } from '../../../stores/useInputStore';
 import { interactionRegistry } from '../../../systems/interactionRegistry';
 import { collisionSystem } from '../../../systems/collision';
 
+/**
+ * Mobile Instanced Rangoli Motifs
+ * Replaces 144 individual mesh draw calls with 9 instanced meshes.
+ * Visually identical: identical geometries, materials, positions, and orientations.
+ */
+const MobileInstancedMotifs: React.FC<{
+  flowerClusters: Array<{ x: number; z: number; color: string }>;
+  perimeterDiyas: Array<{ x: number; z: number; angle: number }>;
+  outerPetals: Array<{ x: number; z: number; angle: number }>;
+  innerPetals: Array<{ x: number; z: number; angle: number }>;
+}> = ({ flowerClusters, perimeterDiyas, outerPetals, innerPetals }) => {
+  const flowerGoldRef = useRef<THREE.InstancedMesh>(null);
+  const flowerOrangeRef = useRef<THREE.InstancedMesh>(null);
+  const diyaBasesRef = useRef<THREE.InstancedMesh>(null);
+  const diyaFlamesRef = useRef<THREE.InstancedMesh>(null);
+  const outerPetalsRef = useRef<THREE.InstancedMesh>(null);
+  const outerPetalSpinesRef = useRef<THREE.InstancedMesh>(null);
+  const innerPetalsRef = useRef<THREE.InstancedMesh>(null);
+  const innerPetalDotsRef = useRef<THREE.InstancedMesh>(null);
+  const mangoLeavesRef = useRef<THREE.InstancedMesh>(null);
+
+  useEffect(() => {
+    const dummy = new THREE.Object3D();
+
+    // 1. Flower Clusters (12 gold, 12 orange)
+    let gIdx = 0;
+    let oIdx = 0;
+    flowerClusters.forEach((fl, idx) => {
+      dummy.position.set(fl.x, 0.053, fl.z);
+      dummy.rotation.set(-Math.PI / 2, 0, idx * 0.5);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+
+      if (fl.color === '#f59e0b' && flowerGoldRef.current) {
+        flowerGoldRef.current.setMatrixAt(gIdx++, dummy.matrix);
+      } else if (flowerOrangeRef.current) {
+        flowerOrangeRef.current.setMatrixAt(oIdx++, dummy.matrix);
+      }
+    });
+    if (flowerGoldRef.current) flowerGoldRef.current.instanceMatrix.needsUpdate = true;
+    if (flowerOrangeRef.current) flowerOrangeRef.current.instanceMatrix.needsUpdate = true;
+
+    // 2. Perimeter Diyas (16 bases, 16 flames)
+    perimeterDiyas.forEach((diya, idx) => {
+      // Base
+      dummy.position.set(diya.x, 0.052 + 0.02, diya.z);
+      dummy.rotation.set(0, 0, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      if (diyaBasesRef.current) diyaBasesRef.current.setMatrixAt(idx, dummy.matrix);
+
+      // Flame
+      dummy.position.set(diya.x, 0.052 + 0.08, diya.z);
+      dummy.rotation.set(0, 0, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      if (diyaFlamesRef.current) diyaFlamesRef.current.setMatrixAt(idx, dummy.matrix);
+    });
+    if (diyaBasesRef.current) diyaBasesRef.current.instanceMatrix.needsUpdate = true;
+    if (diyaFlamesRef.current) diyaFlamesRef.current.instanceMatrix.needsUpdate = true;
+
+    // 3. Outer Lotus Petals (16 blades, 16 spines)
+    const outParent = new THREE.Object3D();
+    const outBlade = new THREE.Object3D();
+    const outSpine = new THREE.Object3D();
+    outParent.add(outBlade);
+    outParent.add(outSpine);
+    outBlade.position.set(0, 0.35, 0);
+    outSpine.position.set(0, 0.3, 0.02);
+    outSpine.scale.set(0.5, 0.8, 0.5);
+
+    outerPetals.forEach((petal, idx) => {
+      outParent.position.set(petal.x, 0.060, petal.z);
+      outParent.rotation.set(-Math.PI / 2, 0, petal.angle);
+      outParent.updateMatrixWorld(true);
+
+      if (outerPetalsRef.current) outerPetalsRef.current.setMatrixAt(idx, outBlade.matrixWorld);
+      if (outerPetalSpinesRef.current) outerPetalSpinesRef.current.setMatrixAt(idx, outSpine.matrixWorld);
+    });
+    if (outerPetalsRef.current) outerPetalsRef.current.instanceMatrix.needsUpdate = true;
+    if (outerPetalSpinesRef.current) outerPetalSpinesRef.current.instanceMatrix.needsUpdate = true;
+
+    // 4. Inner Lotus Petals (16 blades, 16 dots)
+    const inParent = new THREE.Object3D();
+    const inBlade = new THREE.Object3D();
+    const inDot = new THREE.Object3D();
+    inParent.add(inBlade);
+    inParent.add(inDot);
+    inBlade.position.set(0, 0.28, 0);
+    inDot.position.set(0, 0.5, 0.02);
+    inDot.rotation.set(Math.PI / 2, 0, 0);
+
+    innerPetals.forEach((petal, idx) => {
+      inParent.position.set(petal.x, 0.061, petal.z);
+      inParent.rotation.set(-Math.PI / 2, 0, petal.angle);
+      inParent.updateMatrixWorld(true);
+
+      if (innerPetalsRef.current) innerPetalsRef.current.setMatrixAt(idx, inBlade.matrixWorld);
+      if (innerPetalDotsRef.current) innerPetalDotsRef.current.setMatrixAt(idx, inDot.matrixWorld);
+    });
+    if (innerPetalsRef.current) innerPetalsRef.current.instanceMatrix.needsUpdate = true;
+    if (innerPetalDotsRef.current) innerPetalDotsRef.current.instanceMatrix.needsUpdate = true;
+
+    // 5. Mango Leaves (8 leaves)
+    Array.from({ length: 8 }).forEach((_, i) => {
+      const angle = (i / 8) * Math.PI * 2 + Math.PI / 8;
+      const x = Math.cos(angle) * 3.65;
+      const z = Math.sin(angle) * 3.65;
+      dummy.position.set(x, 0.062, z);
+      dummy.rotation.set(-Math.PI / 2, 0, angle + 0.3);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+
+      if (mangoLeavesRef.current) mangoLeavesRef.current.setMatrixAt(i, dummy.matrix);
+    });
+    if (mangoLeavesRef.current) mangoLeavesRef.current.instanceMatrix.needsUpdate = true;
+  }, [flowerClusters, perimeterDiyas, outerPetals, innerPetals]);
+
+  return (
+    <group>
+      {/* 1. Flower Clusters (2 draw calls vs 24) */}
+      <instancedMesh ref={flowerGoldRef} args={[undefined, undefined, 12]}>
+        <circleGeometry args={[0.16, 6]} />
+        <meshStandardMaterial color="#f59e0b" roughness={0.8} />
+      </instancedMesh>
+      <instancedMesh ref={flowerOrangeRef} args={[undefined, undefined, 12]}>
+        <circleGeometry args={[0.16, 6]} />
+        <meshStandardMaterial color="#ea580c" roughness={0.8} />
+      </instancedMesh>
+
+      {/* 2. Perimeter Diyas (2 draw calls vs 48) */}
+      <instancedMesh ref={diyaBasesRef} args={[undefined, undefined, 16]}>
+        <cylinderGeometry args={[0.14, 0.1, 0.04, 12]} />
+        <meshStandardMaterial color="#c2410c" roughness={0.7} />
+      </instancedMesh>
+      <instancedMesh ref={diyaFlamesRef} args={[undefined, undefined, 16]}>
+        <coneGeometry args={[0.045, 0.1, 8]} />
+        <meshStandardMaterial
+          color="#fff5cc"
+          emissive="#ff9900"
+          emissiveIntensity={2.2}
+          toneMapped={false}
+        />
+      </instancedMesh>
+
+      {/* 3. Outer Lotus Petals (2 draw calls vs 32) */}
+      <instancedMesh ref={outerPetalsRef} args={[undefined, undefined, 16]}>
+        <coneGeometry args={[0.42, 1.1, 4]} />
+        <meshStandardMaterial
+          color="#e11d48"
+          emissive="#9f1239"
+          emissiveIntensity={0.3}
+          roughness={0.7}
+        />
+      </instancedMesh>
+      <instancedMesh ref={outerPetalSpinesRef} args={[undefined, undefined, 16]}>
+        <coneGeometry args={[0.3, 0.9, 4]} />
+        <meshStandardMaterial
+          color="#fbbf24"
+          emissive="#d97706"
+          emissiveIntensity={0.35}
+          roughness={0.65}
+        />
+      </instancedMesh>
+
+      {/* 4. Inner Lotus Petals (2 draw calls vs 32) */}
+      <instancedMesh ref={innerPetalsRef} args={[undefined, undefined, 16]}>
+        <coneGeometry args={[0.32, 0.85, 4]} />
+        <meshStandardMaterial
+          color="#0284c7"
+          emissive="#0369a1"
+          emissiveIntensity={0.3}
+          roughness={0.7}
+        />
+      </instancedMesh>
+      <instancedMesh ref={innerPetalDotsRef} args={[undefined, undefined, 16]}>
+        <circleGeometry args={[0.07, 8]} />
+        <meshStandardMaterial
+          color="#ffffff"
+          emissive="#fed7aa"
+          emissiveIntensity={0.4}
+          side={THREE.DoubleSide}
+        />
+      </instancedMesh>
+
+      {/* 5. Mango Leaves (1 draw call vs 8) */}
+      <instancedMesh ref={mangoLeavesRef} args={[undefined, undefined, 8]}>
+        <boxGeometry args={[0.3, 0.65, 0.02]} />
+        <meshStandardMaterial
+          color="#059669"
+          emissive="#047857"
+          emissiveIntensity={0.25}
+          roughness={0.7}
+        />
+      </instancedMesh>
+    </group>
+  );
+};
+
 export const CentralRangoliPlaza: React.FC = () => {
   const openModal = useGameStore((s) => s.openModal);
+  const quality = useGameStore((s) => s.settings.graphicsQuality);
+  const isTouchDevice = useInputStore((s) => s.isTouchDevice);
+
+  // Mobile / touch devices or low quality uses instanced motifs
+  const isMobile = isTouchDevice || quality === 'low';
 
   useEffect(() => {
     // Register central fountain / urli pedestal obstacle
@@ -142,39 +347,48 @@ export const CentralRangoliPlaza: React.FC = () => {
         />
       </mesh>
 
-      {/* Natural Marigold Petal Clusters along circumference */}
-      {flowerClusters.map((fl, idx) => (
-        <mesh key={idx} position={[fl.x, 0.053, fl.z]} rotation={[-Math.PI / 2, 0, idx * 0.5]}>
-          <circleGeometry args={[0.16, 6]} />
-          <meshStandardMaterial color={fl.color} roughness={0.8} />
-        </mesh>
-      ))}
+      {/* Detailed Desktop Motifs vs. Instanced Mobile Motifs */}
+      {isMobile ? (
+        <MobileInstancedMotifs
+          flowerClusters={flowerClusters}
+          perimeterDiyas={perimeterDiyas}
+          outerPetals={outerPetals}
+          innerPetals={innerPetals}
+        />
+      ) : (
+        <>
+          {/* Natural Marigold Petal Clusters along circumference */}
+          {flowerClusters.map((fl, idx) => (
+            <mesh key={idx} position={[fl.x, 0.053, fl.z]} rotation={[-Math.PI / 2, 0, idx * 0.5]}>
+              <circleGeometry args={[0.16, 6]} />
+              <meshStandardMaterial color={fl.color} roughness={0.8} />
+            </mesh>
+          ))}
 
-      {/* 16 Perimeter Diya Pedestals with Golden Glow */}
-      {perimeterDiyas.map((diya, idx) => (
-        <group key={idx} position={[diya.x, 0.052, diya.z]}>
-          {/* Terracotta/Brass Base */}
-          <mesh position={[0, 0.02, 0]} castShadow>
-            <cylinderGeometry args={[0.14, 0.1, 0.04, 12]} />
-            <meshStandardMaterial color="#c2410c" roughness={0.7} />
-          </mesh>
-          {/* Diya Oil Well */}
-          <mesh position={[0, 0.04, 0]}>
-            <cylinderGeometry args={[0.08, 0.02, 0.02, 8]} />
-            <meshStandardMaterial color="#78350f" roughness={0.5} />
-          </mesh>
-          {/* Golden Flame */}
-          <mesh position={[0, 0.08, 0]}>
-            <coneGeometry args={[0.045, 0.1, 8]} />
-            <meshStandardMaterial
-              color="#fff5cc"
-              emissive="#ff9900"
-              emissiveIntensity={2.2}
-              toneMapped={false}
-            />
-          </mesh>
-        </group>
-      ))}
+          {/* 16 Perimeter Diya Pedestals with Golden Glow */}
+          {perimeterDiyas.map((diya, idx) => (
+            <group key={idx} position={[diya.x, 0.052, diya.z]}>
+              <mesh position={[0, 0.02, 0]}>
+                <cylinderGeometry args={[0.14, 0.1, 0.04, 12]} />
+                <meshStandardMaterial color="#c2410c" roughness={0.7} />
+              </mesh>
+              <mesh position={[0, 0.04, 0]}>
+                <cylinderGeometry args={[0.08, 0.02, 0.02, 8]} />
+                <meshStandardMaterial color="#78350f" roughness={0.5} />
+              </mesh>
+              <mesh position={[0, 0.08, 0]}>
+                <coneGeometry args={[0.045, 0.1, 8]} />
+                <meshStandardMaterial
+                  color="#fff5cc"
+                  emissive="#ff9900"
+                  emissiveIntensity={2.2}
+                  toneMapped={false}
+                />
+              </mesh>
+            </group>
+          ))}
+        </>
+      )}
 
       {/* ========================================================
           3. CONCENTRIC GEOMETRIC RANGOLI PATTERN RINGS
@@ -247,81 +461,80 @@ export const CentralRangoliPlaza: React.FC = () => {
         />
       </mesh>
 
-      {/* ========================================================
-          4. SYMMETRICAL MANDALA FLORAL & GEOMETRIC MOTIFS
-      ======================================================== */}
-      {/* 16 Outer Lotus Petals (Crimson & Gold tips) */}
-      {outerPetals.map((petal, idx) => (
-        <group key={idx} position={[petal.x, 0.060, petal.z]} rotation={[-Math.PI / 2, 0, petal.angle]}>
-          {/* Main Petal Blade */}
-          <mesh position={[0, 0.35, 0]}>
-            <coneGeometry args={[0.42, 1.1, 4]} />
-            <meshStandardMaterial
-              color="#e11d48"
-              emissive="#9f1239"
-              emissiveIntensity={0.3}
-              roughness={0.7}
-            />
-          </mesh>
-          {/* Golden Petal Spine Inlay */}
-          <mesh position={[0, 0.3, 0.02]} scale={[0.5, 0.8, 0.5]}>
-            <coneGeometry args={[0.3, 0.9, 4]} />
-            <meshStandardMaterial
-              color="#fbbf24"
-              emissive="#d97706"
-              emissiveIntensity={0.35}
-              roughness={0.65}
-            />
-          </mesh>
-        </group>
-      ))}
+      {/* Desktop Floral & Leaf Motifs (only rendered when not in mobile instanced mode) */}
+      {!isMobile && (
+        <>
+          {/* 16 Outer Lotus Petals (Crimson & Gold tips) */}
+          {outerPetals.map((petal, idx) => (
+            <group key={idx} position={[petal.x, 0.060, petal.z]} rotation={[-Math.PI / 2, 0, petal.angle]}>
+              <mesh position={[0, 0.35, 0]}>
+                <coneGeometry args={[0.42, 1.1, 4]} />
+                <meshStandardMaterial
+                  color="#e11d48"
+                  emissive="#9f1239"
+                  emissiveIntensity={0.3}
+                  roughness={0.7}
+                />
+              </mesh>
+              <mesh position={[0, 0.3, 0.02]} scale={[0.5, 0.8, 0.5]}>
+                <coneGeometry args={[0.3, 0.9, 4]} />
+                <meshStandardMaterial
+                  color="#fbbf24"
+                  emissive="#d97706"
+                  emissiveIntensity={0.35}
+                  roughness={0.65}
+                />
+              </mesh>
+            </group>
+          ))}
 
-      {/* 16 Inner Lotus Petals (Turquoise & Ivory tips) */}
-      {innerPetals.map((petal, idx) => (
-        <group key={idx} position={[petal.x, 0.061, petal.z]} rotation={[-Math.PI / 2, 0, petal.angle]}>
-          <mesh position={[0, 0.28, 0]}>
-            <coneGeometry args={[0.32, 0.85, 4]} />
-            <meshStandardMaterial
-              color="#0284c7"
-              emissive="#0369a1"
-              emissiveIntensity={0.3}
-              roughness={0.7}
-            />
-          </mesh>
-          {/* Pearl White Rice Powder Center Dot */}
-          <mesh position={[0, 0.5, 0.02]} rotation={[Math.PI / 2, 0, 0]}>
-            <circleGeometry args={[0.07, 8]} />
-            <meshStandardMaterial
-              color="#ffffff"
-              emissive="#fed7aa"
-              emissiveIntensity={0.4}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-        </group>
-      ))}
+          {/* 16 Inner Lotus Petals (Turquoise & Ivory tips) */}
+          {innerPetals.map((petal, idx) => (
+            <group key={idx} position={[petal.x, 0.061, petal.z]} rotation={[-Math.PI / 2, 0, petal.angle]}>
+              <mesh position={[0, 0.28, 0]}>
+                <coneGeometry args={[0.32, 0.85, 4]} />
+                <meshStandardMaterial
+                  color="#0284c7"
+                  emissive="#0369a1"
+                  emissiveIntensity={0.3}
+                  roughness={0.7}
+                />
+              </mesh>
+              <mesh position={[0, 0.5, 0.02]} rotation={[Math.PI / 2, 0, 0]}>
+                <circleGeometry args={[0.07, 8]} />
+                <meshStandardMaterial
+                  color="#ffffff"
+                  emissive="#fed7aa"
+                  emissiveIntensity={0.4}
+                  side={THREE.DoubleSide}
+                />
+              </mesh>
+            </group>
+          ))}
 
-      {/* 8 Mango / Paisley Leaf Accents (Emerald Green) */}
-      {Array.from({ length: 8 }).map((_, i) => {
-        const angle = (i / 8) * Math.PI * 2 + Math.PI / 8;
-        const x = Math.cos(angle) * 3.65;
-        const z = Math.sin(angle) * 3.65;
-        return (
-          <mesh
-            key={i}
-            position={[x, 0.062, z]}
-            rotation={[-Math.PI / 2, 0, angle + 0.3]}
-          >
-            <boxGeometry args={[0.3, 0.65, 0.02]} />
-            <meshStandardMaterial
-              color="#059669"
-              emissive="#047857"
-              emissiveIntensity={0.25}
-              roughness={0.7}
-            />
-          </mesh>
-        );
-      })}
+          {/* 8 Mango / Paisley Leaf Accents (Emerald Green) */}
+          {Array.from({ length: 8 }).map((_, i) => {
+            const angle = (i / 8) * Math.PI * 2 + Math.PI / 8;
+            const x = Math.cos(angle) * 3.65;
+            const z = Math.sin(angle) * 3.65;
+            return (
+              <mesh
+                key={i}
+                position={[x, 0.062, z]}
+                rotation={[-Math.PI / 2, 0, angle + 0.3]}
+              >
+                <boxGeometry args={[0.3, 0.65, 0.02]} />
+                <meshStandardMaterial
+                  color="#059669"
+                  emissive="#047857"
+                  emissiveIntensity={0.25}
+                  roughness={0.7}
+                />
+              </mesh>
+            );
+          })}
+        </>
+      )}
 
       {/* ========================================================
           5. CENTRAL BRASS URLI BOWL WITH FLOATING FLOWER PETALS & DIYAS
