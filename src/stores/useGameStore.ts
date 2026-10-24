@@ -107,7 +107,8 @@ export type ActiveModalType =
   | 'settings'
   | 'pause'
   | 'rewards'
-  | 'inventory';
+  | 'inventory'
+  | 'tutorial';
 
 interface GameState {
   isLoaded: boolean;
@@ -118,6 +119,9 @@ interface GameState {
   litDiyas: string[];
   stats: MiniGameStats;
   cosmetics: PlayerCosmetics;
+  tutorialCompleted: boolean;
+  setTutorialCompleted: (completed: boolean) => void;
+  openTutorial: () => void;
   tokenHistory: TokenTransaction[];
   recentTokenDelta: { amount: number; id: string } | null;
   activeModal: ActiveModalType;
@@ -246,6 +250,7 @@ export const flushPendingPersist = () => {
       isCompleted: current.quest.isCompleted,
     },
     cosmetics: current.cosmetics,
+    tutorialCompleted: current.tutorialCompleted,
     tokenHistory: current.tokenHistory,
     dailyDarshan: {
       date: current.dailyDarshan.date,
@@ -375,6 +380,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   ],
   recentTokenDelta: null,
   activeModal: 'welcome',
+  tutorialCompleted: false,
   prompt: null,
   quest: {
     id: 'five_sacred_diyas',
@@ -502,6 +508,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         litDiyas: data.litDiyas,
         stats: data.stats,
         cosmetics: data.cosmetics || { unlocked: [], equipped: null },
+        tutorialCompleted: Boolean(data.tutorialCompleted),
         tokenHistory: data.tokenHistory && data.tokenHistory.length > 0
           ? data.tokenHistory
           : [
@@ -1475,6 +1482,15 @@ export const useGameStore = create<GameState>((set, get) => ({
         timeLeft: RING_TOSS_TIME_LIMIT,
       },
     });
+  },
+
+  setTutorialCompleted: (completed: boolean) => {
+    set({ tutorialCompleted: completed });
+    persistState(get());
+  },
+
+  openTutorial: () => {
+    set({ activeModal: 'tutorial' });
   },
 
   // Attractions: Ferris Wheel

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../../stores/useGameStore';
 import { soundEngine } from '../../audio/soundEngine';
 import { Palette, CheckCircle2, RotateCcw, X } from 'lucide-react';
@@ -22,6 +22,19 @@ export const RangoliEditorUI: React.FC = () => {
   // 16 petal segments in mandala
   const [segments, setSegments] = useState<string[]>(Array(16).fill('#1e293b'));
   const [completed, setCompleted] = useState(false);
+
+  useEffect(() => {
+    if (activeModal !== 'rangoli') return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeModal();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeModal, closeModal]);
 
   if (activeModal !== 'rangoli') return null;
 

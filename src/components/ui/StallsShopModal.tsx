@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGameStore, SHOP_CATALOG } from '../../stores/useGameStore';
 import { useNpcStore } from '../../stores/useNpcStore';
 import { Coins, ShoppingBag, Check, X } from 'lucide-react';
@@ -13,6 +13,15 @@ export const StallsShopModal: React.FC = () => {
 
   const [activeCategory, setActiveCategory] = useState<'all' | 'sweet' | 'diya' | 'handicraft'>('all');
   const [lastPurchased, setLastPurchased] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeModal !== 'shop') return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeModal();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeModal, closeModal]);
 
   if (activeModal !== 'shop') return null;
 
