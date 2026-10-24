@@ -1,3 +1,4 @@
+import type { MissionJournalSaveState } from './missions';
 import type { PlayerCosmetics, TokenTransaction } from './rewards';
 import type { DailyDarshanSaveState } from './daily';
 
@@ -72,6 +73,10 @@ export interface SaveDataV1 {
   cosmetics?: PlayerCosmetics;
   tokenHistory?: TokenTransaction[];
   dailyDarshan?: DailyDarshanSaveState;
+  collectibles?: string[];
+  achievements?: string[];
+  claimedAchievements?: string[];
+  missions?: MissionJournalSaveState;
   settings: {
     graphicsQuality: GraphicsQuality;
     masterVolume: number;

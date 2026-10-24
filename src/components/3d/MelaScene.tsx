@@ -1,3 +1,4 @@
+import { FestivalCollectibles } from './environment/FestivalCollectibles';
 import React, { Suspense } from 'react';
 import { FestivalLighting } from './environment/FestivalLighting';
 import { GroundAndSky } from './environment/GroundAndSky';
@@ -46,6 +47,9 @@ export const MelaScene: React.FC = () => {
 
       {/* Sacred Quest Collectible Diyas */}
       <MagicalDiyas />
+
+      {/* Hidden Festival Exploration Keepsakes */}
+      <FestivalCollectibles />
 
       {/* Fairground Zones */}
       <GrandEntrance />
