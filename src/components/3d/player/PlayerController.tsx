@@ -74,6 +74,10 @@ export const PlayerController = () => {
           exitFerrisWheel();
           return;
         }
+        if (useGameStore.getState().culturalStageState.isScreenActive) {
+          useGameStore.getState().setStageScreenActive(false);
+          return;
+        }
         if (currentModal === 'none') {
           openModal('pause');
         } else if (currentModal === 'pause') {

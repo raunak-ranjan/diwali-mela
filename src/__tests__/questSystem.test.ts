@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useGameStore } from '../stores/useGameStore';
 import { LocalSaveRepository, DEFAULT_SAVE_DATA } from '../systems/saveRepository';
+import { interactionRegistry } from '../systems/interactionRegistry';
 import { MAGICAL_DIYAS_CONFIG } from '../types/quest';
 import type { SaveDataV1 } from '../types/game';
 
@@ -226,5 +227,53 @@ describe('Festival Quest System — The Five Sacred Lights', () => {
 
     useGameStore.getState().dismissQuestNotification();
     expect(useGameStore.getState().questNotification).toBeNull();
+  });
+
+  it('immediately unregisters collected diya from interactionRegistry and clears prompt without stutter', () => {
+    interactionRegistry.register({
+      id: 'magical_diya_entrance',
+      position: [0, 1, 0],
+      radius: 2.4,
+      label: 'Kindle Sacred Diya',
+      actionType: 'quest',
+      onInteract: () => {},
+    });
+
+    useGameStore.setState({
+      prompt: {
+        active: true,
+        id: 'magical_diya_entrance',
+        label: 'Kindle Sacred Diya',
+        actionType: 'quest',
+        position: [0, 1, 0],
+      },
+    });
+
+    expect(interactionRegistry.get('magical_diya_entrance')).toBeDefined();
+    expect(useGameStore.getState().prompt).not.toBeNull();
+
+    const success = useGameStore.getState().collectMagicalDiya('magical_diya_entrance');
+    expect(success).toBe(true);
+
+    // Prompt is dismissed immediately and registry is cleared
+    expect(useGameStore.getState().prompt).toBeNull();
+    expect(interactionRegistry.get('magical_diya_entrance')).toBeUndefined();
+  });
+
+  it('safely rejects rapid duplicate collections without duplicate rewards or multiple toasts', () => {
+    const initialTokens = useGameStore.getState().tokens;
+
+    // Simulate multiple rapid collection calls (e.g. key repeat or multi-touch)
+    const r1 = useGameStore.getState().collectMagicalDiya('magical_diya_wheel');
+    const r2 = useGameStore.getState().collectMagicalDiya('magical_diya_wheel');
+    const r3 = useGameStore.getState().collectMagicalDiya('magical_diya_wheel');
+
+    expect(r1).toBe(true);
+    expect(r2).toBe(false);
+    expect(r3).toBe(false);
+
+    expect(useGameStore.getState().quest.collectedDiyas.filter((id) => id === 'magical_diya_wheel')).toHaveLength(1);
+    expect(useGameStore.getState().stats.magicalDiyasCollected).toBe(1);
+    expect(useGameStore.getState().tokens).toBe(initialTokens);
   });
 });

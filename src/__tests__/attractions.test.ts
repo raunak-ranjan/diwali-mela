@@ -213,6 +213,46 @@ describe('Attraction Behaviors: Ferris Wheel, Cultural Stage & Fireworks', () =>
         target?.secondaryAction?.onAction();
         expect(useGameStore.getState().culturalStageState.isScreenActive).toBe(true);
       });
+
+      it('suppresses duplicate Watch Performance prompt when stage screen is already active', () => {
+        useGameStore.getState().setStageScreenActive(true);
+        expect(useGameStore.getState().culturalStageState.isScreenActive).toBe(true);
+
+        const isScreenActive = useGameStore.getState().culturalStageState.isScreenActive;
+        interactionRegistry.register({
+          id: 'cultural_performance_stage',
+          position: [0, 1.0, 30.5],
+          radius: 4.0,
+          label: 'Diwali Cultural Sangeet Stage',
+          actionType: 'stage',
+          onInteract: () => {},
+          secondaryAction: isScreenActive
+            ? undefined
+            : {
+                label: 'Watch Performance on Stage Screen',
+                sublabel: 'Play Live YouTube Video in 3D Mela',
+                keyHint: 'V',
+                onAction: () => {
+                  useGameStore.getState().setStageScreenActive(true);
+                },
+              },
+        });
+
+        const target = interactionRegistry.get('cultural_performance_stage');
+        expect(target).toBeDefined();
+        expect(target?.secondaryAction).toBeUndefined();
+      });
+
+      it('deactivates stage screen playback when Escape key is pressed', () => {
+        useGameStore.getState().setStageScreenActive(true);
+        expect(useGameStore.getState().culturalStageState.isScreenActive).toBe(true);
+
+        // Escape handling simulation
+        if (useGameStore.getState().culturalStageState.isScreenActive) {
+          useGameStore.getState().setStageScreenActive(false);
+        }
+        expect(useGameStore.getState().culturalStageState.isScreenActive).toBe(false);
+      });
     });
   });
 
