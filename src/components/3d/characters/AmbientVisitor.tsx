@@ -59,7 +59,7 @@ export const AmbientVisitor: React.FC<AmbientVisitorProps> = ({ config, reducedM
 
     // Advance pure autonomous simulation state
     const { nextState, queueAction } = advanceAutonomousNpc(
-      { ...simState.current, speed: config.speed } as any,
+      simState.current,
       { ...config, speed },
       dt,
       {
