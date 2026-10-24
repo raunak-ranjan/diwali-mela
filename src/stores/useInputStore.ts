@@ -6,12 +6,14 @@ interface InputState {
   left: boolean;
   right: boolean;
   interact: boolean;
+  /** Jump key (Space). Only tracked on desktop; mobile uses dedicated button. */
+  jump: boolean;
   joystickVector: { x: number; y: number };
   touchLookDelta: { x: number; y: number };
   isTouchDevice: boolean;
-  
+
   // Direct setters for snappy response
-  setKey: (key: 'forward' | 'backward' | 'left' | 'right' | 'interact', state: boolean) => void;
+  setKey: (key: 'forward' | 'backward' | 'left' | 'right' | 'interact' | 'jump', state: boolean) => void;
   setJoystickVector: (x: number, y: number) => void;
   addTouchLookDelta: (dx: number, dy: number) => void;
   resetTouchLookDelta: () => void;
@@ -33,6 +35,7 @@ export const useInputStore = create<InputState>((set) => ({
   left: false,
   right: false,
   interact: false,
+  jump: false,
   joystickVector: { x: 0, y: 0 },
   touchLookDelta: { x: 0, y: 0 },
   isTouchDevice: detectTouchSync(),
