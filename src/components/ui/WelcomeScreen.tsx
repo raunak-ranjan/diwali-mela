@@ -1,15 +1,34 @@
 import React from 'react';
 import { useGameStore } from '../../stores/useGameStore';
-import { Sparkles, Compass, Gamepad2 } from 'lucide-react';
+import { Sparkles, Compass, Gamepad2, HelpCircle } from 'lucide-react';
 
 export const WelcomeScreen: React.FC = () => {
   const activeModal = useGameStore((s) => s.activeModal);
   const startGame = useGameStore((s) => s.startGame);
+  const openModal = useGameStore((s) => s.openModal);
+  const tutorialCompleted = useGameStore((s) => s.tutorialCompleted);
 
   if (activeModal !== 'welcome') return null;
 
+  const handleEnterMela = () => {
+    startGame();
+    if (!tutorialCompleted) {
+      openModal('tutorial');
+    }
+  };
+
+  const handleOpenTutorial = () => {
+    startGame();
+    openModal('tutorial');
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 animate-fadeIn">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="welcome-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 animate-fadeIn"
+    >
       <div className="relative max-w-xl w-full bg-gradient-to-b from-festive-nightBlue to-festive-deepNavy border-2 border-festive-gold/60 rounded-2xl shadow-2xl p-6 md:p-8 text-center text-white overflow-hidden">
         {/* Decorative corner orbs */}
         <div className="absolute top-0 left-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
@@ -24,7 +43,10 @@ export const WelcomeScreen: React.FC = () => {
           <span className="text-3xl">🪔</span>
         </div>
 
-        <h1 className="text-3xl md:text-5xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-festive-gold via-festive-amber to-festive-saffron font-serif">
+        <h1
+          id="welcome-modal-title"
+          className="text-3xl md:text-5xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-festive-gold via-festive-amber to-festive-saffron font-serif"
+        >
           DIWALI MELA 3D
         </h1>
         <p className="text-sm md:text-base text-amber-200/90 mt-2 font-medium">
@@ -51,24 +73,30 @@ export const WelcomeScreen: React.FC = () => {
         </div>
 
         {/* Controls Info */}
-        <div className="bg-slate-900/60 border border-slate-700/60 rounded-xl p-3 mb-6 text-xs text-gray-300 flex flex-wrap items-center justify-around gap-2">
+        <div className="bg-slate-900/60 border border-slate-700/60 rounded-xl p-3 mb-5 text-xs text-gray-300 flex flex-wrap items-center justify-around gap-2">
           <div><span className="font-bold text-festive-gold">WASD / Arrows</span> to Walk</div>
-          <div><span className="font-bold text-festive-gold">Mouse / Drag</span> Camera</div>
+          <div><span className="font-bold text-festive-gold">Space</span> to Jump</div>
           <div><span className="font-bold text-festive-gold">[E]</span> to Interact</div>
-          <div><span className="font-bold text-festive-gold">Touch Screen</span> Joystick on Mobile</div>
+          <div><span className="font-bold text-festive-gold">Touch Screen</span> Mobile Joystick</div>
         </div>
 
         {/* Action Button */}
         <button
-          onClick={startGame}
-          className="w-full py-3.5 px-6 rounded-xl font-bold text-lg text-amber-950 bg-gradient-to-r from-festive-gold via-amber-400 to-festive-saffron hover:brightness-110 active:scale-[0.98] transition-all shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2 cursor-pointer"
+          onClick={handleEnterMela}
+          className="w-full py-3.5 px-6 rounded-xl font-bold text-base sm:text-lg text-amber-950 bg-gradient-to-r from-festive-gold via-amber-400 to-festive-saffron hover:brightness-110 active:scale-[0.98] transition-all shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2 cursor-pointer"
         >
           <Sparkles className="w-5 h-5" />
           <span>ENTER THE MELA • मेला प्रवेश करें</span>
         </button>
 
-        <div className="mt-3 text-[11px] text-gray-400">
-          Audio experience enabled • Web Audio festive sangeet
+        <div className="mt-3 flex items-center justify-center gap-4 text-xs text-gray-400">
+          <button
+            onClick={handleOpenTutorial}
+            className="text-amber-300 hover:text-amber-200 underline flex items-center gap-1 cursor-pointer"
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            <span>How to Play & Controls Walkthrough</span>
+          </button>
         </div>
       </div>
     </div>

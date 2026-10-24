@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useGameStore } from '../../stores/useGameStore';
 import { Play, Settings, HelpCircle } from 'lucide-react';
 
@@ -7,12 +7,34 @@ export const PauseMenu: React.FC = () => {
   const closeModal = useGameStore((s) => s.closeModal);
   const openModal = useGameStore((s) => s.openModal);
 
+  // Keyboard navigation & Escape key handling
+  useEffect(() => {
+    if (activeModal !== 'pause') return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeModal();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeModal, closeModal]);
+
   if (activeModal !== 'pause') return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="pause-menu-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn"
+    >
       <div className="relative max-w-sm w-full bg-slate-900 border-2 border-festive-gold/60 rounded-3xl shadow-2xl p-6 text-center text-white flex flex-col items-center">
-        <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-festive-gold to-festive-saffron mb-1">
+        <h2
+          id="pause-menu-title"
+          className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-festive-gold to-festive-saffron mb-1"
+        >
           PAUSED
         </h2>
         <div className="text-xs text-amber-200/80 mb-6">Diwali Mela Experience</div>
@@ -35,11 +57,11 @@ export const PauseMenu: React.FC = () => {
           </button>
 
           <button
-            onClick={() => openModal('welcome')}
+            onClick={() => openModal('tutorial')}
             className="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer border border-slate-700"
           >
             <HelpCircle className="w-4 h-4 text-festive-saffron" />
-            <span>Controls & Info</span>
+            <span>Tutorial & Controls Guide</span>
           </button>
         </div>
 

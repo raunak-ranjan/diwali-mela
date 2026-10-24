@@ -72,6 +72,7 @@ export interface SaveDataV1 {
   cosmetics?: PlayerCosmetics;
   tokenHistory?: TokenTransaction[];
   dailyDarshan?: DailyDarshanSaveState;
+  tutorialCompleted?: boolean;
   settings: {
     graphicsQuality: GraphicsQuality;
     masterVolume: number;

@@ -46,6 +46,7 @@ export const DEFAULT_SAVE_DATA: SaveDataV1 = {
       timestamp: Date.now(),
     },
   ],
+  tutorialCompleted: false,
   dailyDarshan: {
     date: getCalendarDateString(),
     progress: {},
@@ -243,6 +244,7 @@ export class LocalSaveRepository implements ISaveRepository {
       if (data.cosmetics.equipped !== null && typeof data.cosmetics.equipped !== 'string') return false;
     }
     if (data.tokenHistory !== undefined && !Array.isArray(data.tokenHistory)) return false;
+    if (data.tutorialCompleted !== undefined && typeof data.tutorialCompleted !== 'boolean') return false;
     return true;
   }
 
@@ -420,6 +422,7 @@ export class LocalSaveRepository implements ISaveRepository {
       cosmetics,
       tokenHistory,
       dailyDarshan,
+      tutorialCompleted: typeof data.tutorialCompleted === 'boolean' ? data.tutorialCompleted : false,
       settings,
       lastSavedAt: typeof data.lastSavedAt === 'number' ? data.lastSavedAt : Date.now(),
     };
