@@ -550,6 +550,7 @@ class FestiveSoundEngine {
       }
     });
     this.spatialAudioSources = [];
+  }
 
   /**
    * Sound effect: Visitor greeting - Warm festive sitar/glockenspiel chord chime
