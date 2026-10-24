@@ -122,6 +122,7 @@ export const SettingsModal: React.FC = () => {
               <button
                 type="button"
                 role="switch"
+                aria-label="Toggle Reduced Motion"
                 aria-checked={settings.reducedMotion}
                 onClick={() => updateSettings({ reducedMotion: !settings.reducedMotion })}
                 className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer ${
