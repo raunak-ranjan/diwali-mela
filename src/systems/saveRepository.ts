@@ -311,9 +311,27 @@ export class LocalSaveRepository implements ISaveRepository {
       fireworksWatchedCount: typeof rawStats.fireworksWatchedCount === 'number' && rawStats.fireworksWatchedCount >= 0
         ? rawStats.fireworksWatchedCount
         : 0,
-      shrineOfferingsCount: typeof rawStats.shrineOfferingsCount === 'number' && rawStats.shrineOfferingsCount >= 0
+            shrineOfferingsCount: typeof rawStats.shrineOfferingsCount === 'number' && rawStats.shrineOfferingsCount >= 0
         ? rawStats.shrineOfferingsCount
         : 0,
+      balloonLeaderboard: Array.isArray(rawStats.balloonLeaderboard)
+        ? rawStats.balloonLeaderboard
+            .filter((e: any) => e && typeof e.score === 'number' && Number.isFinite(e.score))
+            .slice(0, 5)
+            .map((e: any) => ({
+              score: Math.floor(e.score),
+              date: typeof e.date === 'string' ? e.date : new Date().toISOString().split('T')[0],
+            }))
+        : [],
+      ringTossLeaderboard: Array.isArray(rawStats.ringTossLeaderboard)
+        ? rawStats.ringTossLeaderboard
+            .filter((e: any) => e && typeof e.score === 'number' && Number.isFinite(e.score))
+            .slice(0, 5)
+            .map((e: any) => ({
+              score: Math.floor(e.score),
+              date: typeof e.date === 'string' ? e.date : new Date().toISOString().split('T')[0],
+            }))
+        : [],
     };
 
     // Sanitize quest progress
