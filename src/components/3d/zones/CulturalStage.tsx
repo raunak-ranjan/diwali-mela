@@ -30,20 +30,22 @@ export const CulturalStage = () => {
       onInteract: () => {
         openModal('stage');
       },
-      secondaryAction: {
-        label: 'Watch Performance on Stage Screen',
-        sublabel: 'Play Live YouTube Video in 3D Mela',
-        keyHint: 'V',
-        onAction: () => {
-          setStageScreenActive(true);
-        },
-      },
+      secondaryAction: isScreenActive
+        ? undefined
+        : {
+            label: 'Watch Performance on Stage Screen',
+            sublabel: 'Play Live YouTube Video in 3D Mela',
+            keyHint: 'V',
+            onAction: () => {
+              setStageScreenActive(true);
+            },
+          },
     });
 
     return () => {
       interactionRegistry.unregister('cultural_performance_stage');
     };
-  }, [openModal, setStageScreenActive]);
+  }, [openModal, setStageScreenActive, isScreenActive]);
 
   // Stage Spotlight movement and animated concert lighting
   useFrame(({ clock }) => {

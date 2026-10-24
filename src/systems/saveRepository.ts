@@ -70,6 +70,7 @@ const LEGACY_STORAGE_KEYS = ['diwali_mela_save', 'diwali_mela_save_v0'];
 
 export class LocalSaveRepository implements ISaveRepository {
   private memoryFallback: SaveDataV1 | null = null;
+  private _storageAvailable: boolean | null = null;
 
   private getStorage(): Storage | null {
     try {
@@ -86,14 +87,20 @@ export class LocalSaveRepository implements ISaveRepository {
   }
 
   private isStorageAvailable(): boolean {
+    if (this._storageAvailable !== null) return this._storageAvailable;
     try {
       const storage = this.getStorage();
-      if (!storage) return false;
+      if (!storage) {
+        this._storageAvailable = false;
+        return false;
+      }
       const testKey = '__diwali_storage_probe__';
       storage.setItem(testKey, '1');
       storage.removeItem(testKey);
+      this._storageAvailable = true;
       return true;
     } catch {
+      this._storageAvailable = false;
       return false;
     }
   }
@@ -115,6 +122,9 @@ export class LocalSaveRepository implements ISaveRepository {
   }
 
   async load(): Promise<SaveDataV1> {
+    if (typeof (this as any).flushPendingSave === 'function') {
+      (this as any).flushPendingSave();
+    }
     try {
       const storage = this.getStorage();
       if (!this.isStorageAvailable() || !storage) {
@@ -191,11 +201,12 @@ export class LocalSaveRepository implements ISaveRepository {
         ...data,
         lastSavedAt: Date.now(),
       };
-      this.memoryFallback = JSON.parse(JSON.stringify(dataWithTimestamp));
+      const serialized = JSON.stringify(dataWithTimestamp);
+      this.memoryFallback = JSON.parse(serialized);
 
       const storage = this.getStorage();
       if (this.isStorageAvailable() && storage) {
-        storage.setItem(STORAGE_KEY, JSON.stringify(dataWithTimestamp));
+        storage.setItem(STORAGE_KEY, serialized);
       }
       return true;
     } catch (err) {

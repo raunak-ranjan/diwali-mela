@@ -6,6 +6,7 @@ import { Sparkles, Video } from 'lucide-react';
 export const InteractionPrompt: React.FC = () => {
   const prompt = useGameStore((s) => s.prompt);
   const activeModal = useGameStore((s) => s.activeModal);
+  const isScreenActive = useGameStore((s) => s.culturalStageState.isScreenActive);
 
   if (!prompt || !prompt.active || activeModal !== 'none') return null;
 
@@ -22,8 +23,19 @@ export const InteractionPrompt: React.FC = () => {
     }
   };
 
+  // Suppress duplicate stage screen trigger when the video is already active
+  const hasSecondary = Boolean(
+    prompt.secondaryAction &&
+    (!isScreenActive || prompt.actionType !== 'stage')
+  );
+
   return (
-    <div className="fixed bottom-24 sm:bottom-12 inset-x-0 pointer-events-none z-30 flex flex-col sm:flex-row items-center justify-center gap-2 px-4 animate-slideUp">
+    <div
+      data-testid="interaction-prompt"
+      className={`fixed inset-x-0 pointer-events-none z-30 flex flex-col sm:flex-row items-center justify-center gap-2 px-4 transition-all duration-200 animate-slideUp ${
+        isScreenActive ? 'bottom-28 sm:bottom-24' : 'bottom-24 sm:bottom-12'
+      }`}
+    >
       <button
         onClick={handleClick}
         className="pointer-events-auto bg-slate-900/90 hover:bg-slate-800/90 active:scale-95 transition-all border border-festive-gold/60 shadow-2xl rounded-2xl py-2.5 px-5 flex items-center gap-3 text-white max-w-md w-full sm:w-auto cursor-pointer"
@@ -42,7 +54,7 @@ export const InteractionPrompt: React.FC = () => {
         </div>
       </button>
 
-      {prompt.secondaryAction && (
+      {hasSecondary && prompt.secondaryAction && (
         <button
           onClick={handleSecondaryClick}
           data-testid="prompt-secondary-action-btn"

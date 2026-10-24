@@ -9,16 +9,63 @@ interface DiyaItemProps {
   config: MagicalDiyaConfig;
   index: number;
   reducedMotion: boolean;
+  isCollected: boolean;
   onCollect: (id: string, name: string) => void;
 }
 
-const SingleMagicalDiya: React.FC<DiyaItemProps> = ({ config, index, reducedMotion, onCollect }) => {
+// Module-level shared materials to avoid per-instance allocations and shader disposal stalls
+const goldMetalMaterial = new THREE.MeshStandardMaterial({
+  color: '#f59e0b',
+  emissive: '#b45309',
+  emissiveIntensity: 0.35,
+  roughness: 0.25,
+  metalness: 0.85,
+});
+
+const auraMaterial = new THREE.MeshBasicMaterial({
+  color: '#fbbf24',
+  transparent: true,
+  opacity: 0.45,
+  side: THREE.DoubleSide,
+});
+
+const innerFlameMaterial = new THREE.MeshBasicMaterial({
+  color: '#ffffff',
+});
+
+const outerFlameMaterial = new THREE.MeshBasicMaterial({
+  color: '#ff9800',
+  transparent: true,
+  opacity: 0.9,
+});
+
+const sparkMaterial = new THREE.MeshBasicMaterial({
+  color: '#fef08a',
+});
+
+const basePlinthMaterial = new THREE.MeshStandardMaterial({
+  color: '#451a03',
+  roughness: 0.8,
+});
+
+const lotusRingMaterial = new THREE.MeshStandardMaterial({
+  color: '#b45309',
+  roughness: 0.4,
+  metalness: 0.6,
+});
+
+const SingleMagicalDiyaComponent: React.FC<DiyaItemProps> = ({ config, index, reducedMotion, isCollected, onCollect }) => {
   const groupRef = useRef<THREE.Group>(null);
   const auraRef = useRef<THREE.Mesh>(null);
   const flameRef = useRef<THREE.Group>(null);
   const sparkRefs = useRef<(THREE.Mesh | null)[]>([]);
 
   useEffect(() => {
+    if (isCollected) {
+      interactionRegistry.unregister(config.id);
+      return;
+    }
+
     interactionRegistry.register({
       id: config.id,
       position: config.position,
@@ -34,60 +81,10 @@ const SingleMagicalDiya: React.FC<DiyaItemProps> = ({ config, index, reducedMoti
     return () => {
       interactionRegistry.unregister(config.id);
     };
-  }, [config, onCollect]);
-
-  // Materials & Geometries memoized
-  const goldMetalMaterial = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: '#f59e0b',
-        emissive: '#b45309',
-        emissiveIntensity: 0.35,
-        roughness: 0.25,
-        metalness: 0.85,
-      }),
-    []
-  );
-
-  const auraMaterial = useMemo(
-    () =>
-      new THREE.MeshBasicMaterial({
-        color: '#fbbf24',
-        transparent: true,
-        opacity: 0.45,
-        side: THREE.DoubleSide,
-      }),
-    []
-  );
-
-  const innerFlameMaterial = useMemo(
-    () =>
-      new THREE.MeshBasicMaterial({
-        color: '#ffffff',
-      }),
-    []
-  );
-
-  const outerFlameMaterial = useMemo(
-    () =>
-      new THREE.MeshBasicMaterial({
-        color: '#ff9800',
-        transparent: true,
-        opacity: 0.9,
-      }),
-    []
-  );
-
-  const sparkMaterial = useMemo(
-    () =>
-      new THREE.MeshBasicMaterial({
-        color: '#fef08a',
-      }),
-    []
-  );
+  }, [config, isCollected, onCollect]);
 
   useFrame(({ clock }, delta) => {
-    if (!groupRef.current) return;
+    if (isCollected || !groupRef.current) return;
     const t = clock.getElapsedTime();
     const safeDelta = Math.min(delta, 0.05);
 
@@ -122,17 +119,17 @@ const SingleMagicalDiya: React.FC<DiyaItemProps> = ({ config, index, reducedMoti
     });
   });
 
+  if (isCollected) return null;
+
   return (
     <group position={config.position}>
       {/* Stone decorative base plinth on ground */}
-      <mesh position={[0, -config.position[1] + 0.04, 0]} receiveShadow>
+      <mesh position={[0, -config.position[1] + 0.04, 0]} material={basePlinthMaterial} receiveShadow>
         <cylinderGeometry args={[0.42, 0.48, 0.08, 16]} />
-        <meshStandardMaterial color="#451a03" roughness={0.8} />
       </mesh>
       {/* Lotus ring carving at base */}
-      <mesh position={[0, -config.position[1] + 0.09, 0]}>
+      <mesh position={[0, -config.position[1] + 0.09, 0]} material={lotusRingMaterial}>
         <cylinderGeometry args={[0.36, 0.42, 0.03, 16]} />
-        <meshStandardMaterial color="#b45309" roughness={0.4} metalness={0.6} />
       </mesh>
 
       {/* Floating Diya Group */}
@@ -194,15 +191,20 @@ const SingleMagicalDiya: React.FC<DiyaItemProps> = ({ config, index, reducedMoti
   );
 };
 
+const SingleMagicalDiya = React.memo(SingleMagicalDiyaComponent);
+
 export const MagicalDiyas: React.FC = () => {
   const collectedDiyas = useGameStore((s) => s.quest.collectedDiyas);
   const collectMagicalDiya = useGameStore((s) => s.collectMagicalDiya);
   const reducedMotion = useGameStore((s) => s.settings.reducedMotion);
 
+  // Set lookup for instant O(1) checks
+  const collectedSet = useMemo(() => new Set(collectedDiyas), [collectedDiyas]);
+
   return (
     <group name="magical-diyas-group">
       {MAGICAL_DIYAS_CONFIG.map((diya, index) => {
-        const isCollected = collectedDiyas.includes(diya.id);
+        const isCollected = collectedSet.has(diya.id);
         if (isCollected) return null;
 
         return (
@@ -211,6 +213,7 @@ export const MagicalDiyas: React.FC = () => {
             config={diya}
             index={index}
             reducedMotion={reducedMotion}
+            isCollected={isCollected}
             onCollect={collectMagicalDiya}
           />
         );

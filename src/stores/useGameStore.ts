@@ -10,6 +10,7 @@ import {
   isConsecutiveDay,
 } from '../types/daily';
 import { saveRepository } from '../systems/saveRepository';
+import { interactionRegistry } from '../systems/interactionRegistry';
 import { soundEngine } from '../audio/soundEngine';
 import { useInputStore } from './useInputStore';
 
@@ -226,7 +227,14 @@ interface GameState {
   triggerManualFirework: (burstType?: 'peony' | 'willow' | 'ring' | 'crackle' | 'kamuro') => void;
 }
 
-const persistState = (current: GameState) => {
+let persistQueued = false;
+let pendingPersistState: GameState | null = null;
+
+export const flushPendingPersist = () => {
+  persistQueued = false;
+  if (!pendingPersistState) return;
+  const current = pendingPersistState;
+  pendingPersistState = null;
   saveRepository.save({
     version: 1,
     tokens: current.tokens,
@@ -253,6 +261,31 @@ const persistState = (current: GameState) => {
     settings: current.settings,
     lastSavedAt: Date.now(),
   });
+};
+
+// Register flush hook on saveRepository so saveRepository.load() automatically flushes any queued write
+(saveRepository as any).flushPendingSave = flushPendingPersist;
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    flushPendingPersist();
+  });
+}
+
+const persistState = (current: GameState, immediate = false) => {
+  pendingPersistState = current;
+  if (immediate) {
+    flushPendingPersist();
+    return;
+  }
+  if (!persistQueued) {
+    persistQueued = true;
+    queueMicrotask(() => {
+      if (persistQueued) {
+        flushPendingPersist();
+      }
+    });
+  }
 };
 
 const applyDailyProgress = (
@@ -940,6 +973,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     // Guard against duplicate collection
     if (current.quest.collectedDiyas.includes(diyaId)) return false;
 
+    // Immediately unregister from interaction registry to prevent duplicate interaction/prompt
+    interactionRegistry.unregister(diyaId);
+
     const updatedCollected = [...current.quest.collectedDiyas, diyaId];
     const targetCount = current.quest.targetCount;
     const isNowComplete = updatedCollected.length >= targetCount;
@@ -1001,6 +1037,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       stats: updatedStats,
       tokenHistory: updatedHistory,
       recentTokenDelta: recentDelta,
+      prompt: current.prompt?.id === diyaId ? null : current.prompt,
       quest: {
         ...current.quest,
         collectedDiyas: updatedCollected,

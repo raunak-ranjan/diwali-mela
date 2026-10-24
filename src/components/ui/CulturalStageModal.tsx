@@ -13,6 +13,7 @@ export const CulturalStageModal: React.FC = () => {
   const setStagePlayingMusic = useGameStore((s) => s.setStagePlayingMusic);
   const setStageRaag = useGameStore((s) => s.setStageRaag);
   const setStageLightingTheme = useGameStore((s) => s.setStageLightingTheme);
+  const isScreenActive = useGameStore((s) => s.culturalStageState.isScreenActive);
 
   // Keyboard navigation & Escape key
   useEffect(() => {
@@ -213,24 +214,40 @@ export const CulturalStageModal: React.FC = () => {
             </div>
             <div>
               <div className="text-xs font-bold text-festive-gold flex items-center gap-1.5">
-                <span>Watch Performance on Stage Screen</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-600/90 text-white font-semibold">3D Screen</span>
+                <span>Stage Screen Video</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${isScreenActive ? 'bg-emerald-600/90 text-white' : 'bg-red-600/90 text-white'}`}>
+                  {isScreenActive ? 'Active' : '3D Screen'}
+                </span>
               </div>
               <div className="text-[11px] text-amber-100/80">
-                Play live YouTube performance directly on the 3D stage LED display
+                {isScreenActive
+                  ? 'Currently playing on the 3D stage LED display'
+                  : 'Play live YouTube performance directly on the 3D stage LED display'}
               </div>
             </div>
           </div>
 
-          <button
-            type="button"
-            data-testid="stage-watch-video-btn"
-            onClick={() => setStageScreenActive(true)}
-            className="w-full sm:w-auto py-2 px-3.5 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow active:scale-95 transition-all cursor-pointer"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>Play on Stage Screen</span>
-          </button>
+          {isScreenActive ? (
+            <button
+              type="button"
+              data-testid="stage-screen-stop-modal-btn"
+              onClick={() => setStageScreenActive(false)}
+              className="w-full sm:w-auto py-2 px-3.5 rounded-xl bg-red-600/90 hover:bg-red-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Stop Screen</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              data-testid="stage-watch-video-btn"
+              onClick={() => setStageScreenActive(true)}
+              className="w-full sm:w-auto py-2 px-3.5 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+            >
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>Play on Stage Screen</span>
+            </button>
+          )}
         </div>
 
         {/* Close Button */}
