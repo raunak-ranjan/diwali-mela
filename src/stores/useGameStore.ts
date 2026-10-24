@@ -870,6 +870,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     const current = get();
     if (current.litDiyas.includes(diyaId)) return;
 
+    // Immediately unregister from interaction registry to avoid redundant proximity queries
+    interactionRegistry.unregister(diyaId);
+
     const updatedLit = [...current.litDiyas, diyaId];
     soundEngine.playDiyaLight();
 
@@ -897,6 +900,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({
       tokens: updatedTokens,
       litDiyas: updatedLit,
+      prompt: current.prompt?.id === diyaId ? null : current.prompt,
       stats: updatedStats,
       tokenHistory: updatedHistory,
       recentTokenDelta: { amount: reward, id: String(Date.now()) },

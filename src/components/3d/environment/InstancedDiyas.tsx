@@ -14,6 +14,7 @@ interface DiyaInfo {
 export const InstancedDiyas = () => {
   const litDiyas = useGameStore((s) => s.litDiyas);
   const lightDiya = useGameStore((s) => s.lightDiya);
+  const litDiyasSet = useMemo(() => new Set(litDiyas), [litDiyas]);
 
   const diyaPositions = useMemo<DiyaInfo[]>(() => {
     const list: DiyaInfo[] = [];
@@ -97,7 +98,7 @@ export const InstancedDiyas = () => {
     const time = clock.getElapsedTime();
 
     diyaPositions.forEach((diya, i) => {
-      const isActuallyLit = diya.isLit || litDiyas.includes(diya.id);
+      const isActuallyLit = diya.isLit || litDiyasSet.has(diya.id);
 
       // Organic dancing flame with gentle flutter
       if (isActuallyLit) {

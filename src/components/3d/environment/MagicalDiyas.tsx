@@ -119,8 +119,6 @@ const SingleMagicalDiyaComponent: React.FC<DiyaItemProps> = ({ config, index, re
     });
   });
 
-  if (isCollected) return null;
-
   return (
     <group position={config.position}>
       {/* Stone decorative base plinth on ground */}
@@ -132,8 +130,8 @@ const SingleMagicalDiyaComponent: React.FC<DiyaItemProps> = ({ config, index, re
         <cylinderGeometry args={[0.36, 0.42, 0.03, 16]} />
       </mesh>
 
-      {/* Floating Diya Group */}
-      <group ref={groupRef}>
+      {/* Floating Diya Group - Hidden when collected with zero draw calls */}
+      <group ref={groupRef} visible={!isCollected}>
         {/* Sculpted Golden Diya Lamp Bowl */}
         <mesh material={goldMetalMaterial} castShadow>
           <cylinderGeometry args={[0.26, 0.14, 0.14, 20]} />
@@ -183,10 +181,17 @@ const SingleMagicalDiyaComponent: React.FC<DiyaItemProps> = ({ config, index, re
             <sphereGeometry args={[0.045, 12, 12]} />
           </mesh>
         </group>
-
-        {/* Warm local sacred illumination */}
-        <pointLight color="#f59e0b" intensity={0.9} distance={3.5} decay={2} />
       </group>
+
+      {/*
+        CRITICAL PERFORMANCE FIX:
+        Keep pointLight in scene graph with intensity={isCollected ? 0 : 0.9}.
+        In Three.js, unmounting or toggling visible=false on a light alters the scene light count,
+        which immediately invalidates and triggers synchronous recompilation of WebGL shaders
+        for every illuminated material in the entire world (causing a 200-500ms freeze).
+        Zero intensity keeps light count stable so NO shaders are recompiled!
+      */}
+      <pointLight color="#f59e0b" intensity={isCollected ? 0 : 0.9} distance={3.5} decay={2} />
     </group>
   );
 };
@@ -205,8 +210,6 @@ export const MagicalDiyas: React.FC = () => {
     <group name="magical-diyas-group">
       {MAGICAL_DIYAS_CONFIG.map((diya, index) => {
         const isCollected = collectedSet.has(diya.id);
-        if (isCollected) return null;
-
         return (
           <SingleMagicalDiya
             key={diya.id}

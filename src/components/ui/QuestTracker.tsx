@@ -4,7 +4,7 @@ import { MAGICAL_DIYAS_CONFIG } from '../../types/quest';
 import { Sparkles, ChevronDown, ChevronUp, CheckCircle2, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-export const QuestTracker: React.FC = () => {
+const QuestTrackerComponent: React.FC = () => {
   const quest = useGameStore((s) => s.quest);
   const dailyDarshan = useGameStore((s) => s.dailyDarshan);
   const claimDailyBonus = useGameStore((s) => s.claimDailyBonus);
@@ -268,3 +268,5 @@ export const QuestTracker: React.FC = () => {
     </>
   );
 };
+
+export const QuestTracker = React.memo(QuestTrackerComponent);
