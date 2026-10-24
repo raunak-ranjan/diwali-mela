@@ -5,6 +5,7 @@ import { useGameStore } from '../../../stores/useGameStore';
 import { useInputStore } from '../../../stores/useInputStore';
 import { collisionSystem } from '../../../systems/collision';
 import { interactionRegistry } from '../../../systems/interactionRegistry';
+import { computeInputAxes, computeDesiredVelocity } from '../../../utils/movementMath';
 import { PlayerCosmetics } from './PlayerCosmetics';
 import { PlayerSparkler } from './PlayerSparkler';
 
@@ -228,26 +229,8 @@ export const PlayerController = () => {
     }
 
     // Desired movement direction relative to camera yaw
-    let forwardInput = (input.forward ? 1 : 0) - (input.backward ? 1 : 0);
-    let rightInput = (input.right ? 1 : 0) - (input.left ? 1 : 0);
-
-    // Virtual Joystick blend
-    if (input.joystickVector.x !== 0 || input.joystickVector.y !== 0) {
-      rightInput += input.joystickVector.x;
-      forwardInput -= input.joystickVector.y;
-    }
-
-    // Build desired velocity vector in world space
-    const desiredVel = new THREE.Vector3();
-    if (forwardInput !== 0 || rightInput !== 0) {
-      const camForward = new THREE.Vector3(Math.sin(yaw.current), 0, Math.cos(yaw.current)).normalize();
-      const camRight = new THREE.Vector3(Math.cos(yaw.current), 0, -Math.sin(yaw.current)).normalize();
-
-      desiredVel.addScaledVector(camForward, forwardInput);
-      desiredVel.addScaledVector(camRight, rightInput);
-      if (desiredVel.lengthSq() > 1) desiredVel.normalize();
-      desiredVel.multiplyScalar(maxSpeed);
-    }
+    const axes = computeInputAxes(input);
+    const desiredVel = computeDesiredVelocity(axes, yaw.current, maxSpeed);
     // desiredVel is zero when no input → velocity decelerates to zero
 
     // Lerp current velocity toward desired (smooth acceleration & deceleration)
