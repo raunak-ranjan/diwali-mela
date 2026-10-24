@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { InteractionPromptState, InteractionPromptAction } from '../types/game';
+import { collisionSystem } from './collision';
 
 export interface InteractionTarget {
   id: string;
@@ -27,7 +28,7 @@ class InteractionRegistry {
     return this.targets.get(id);
   }
 
-  public findNearest(playerPos: THREE.Vector3): InteractionTarget | null {
+  public findNearest(playerPos: THREE.Vector3, checkOcclusion = true): InteractionTarget | null {
     let nearest: InteractionTarget | null = null;
     let minDistanceSq = Infinity;
 
@@ -39,6 +40,14 @@ class InteractionRegistry {
       const radiusSq = target.radius * target.radius;
 
       if (distSq <= radiusSq && distSq < minDistanceSq) {
+        // Prevent interactions through solid walls or booths
+        if (
+          checkOcclusion &&
+          !collisionSystem.hasLineOfSight(playerPos.x, playerPos.z, target.position[0], target.position[2])
+        ) {
+          continue;
+        }
+
         minDistanceSq = distSq;
         nearest = target;
       }

@@ -153,7 +153,8 @@ export type ActiveModalType =
   | 'settings'
   | 'pause'
   | 'rewards'
-  | 'inventory';
+  | 'inventory'
+  | 'tutorial';
 
 interface GameState {
   isLoaded: boolean;
@@ -164,6 +165,9 @@ interface GameState {
   litDiyas: string[];
   stats: MiniGameStats;
   cosmetics: PlayerCosmetics;
+  tutorialCompleted: boolean;
+  setTutorialCompleted: (completed: boolean) => void;
+  openTutorial: () => void;
   tokenHistory: TokenTransaction[];
   recentTokenDelta: { amount: number; id: string } | null;
   activeModal: ActiveModalType;
@@ -309,7 +313,7 @@ export const flushPendingPersist = () => {
     achievements: current.achievements,
     claimedAchievements: current.claimedAchievements,
     missions: current.missions,
-
+    tutorialCompleted: current.tutorialCompleted,
     tokenHistory: current.tokenHistory,
     dailyDarshan: {
       date: current.dailyDarshan.date,
@@ -444,6 +448,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   achievements: [],
   claimedAchievements: [],
   missions: createDefaultMissionJournal(),
+  tutorialCompleted: false,
   prompt: null,
   quest: {
     id: 'five_sacred_diyas',
@@ -576,7 +581,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         achievements: data.achievements || [],
         claimedAchievements: data.claimedAchievements || [],
         missions: data.missions || createDefaultMissionJournal(),
-
+        tutorialCompleted: Boolean(data.tutorialCompleted),
         tokenHistory: data.tokenHistory && data.tokenHistory.length > 0
           ? data.tokenHistory
           : [
@@ -1768,6 +1773,15 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
     persistState(get());
     return true;
+  },
+
+  setTutorialCompleted: (completed: boolean) => {
+    set({ tutorialCompleted: completed });
+    persistState(get());
+  },
+
+  openTutorial: () => {
+    set({ activeModal: 'tutorial' });
   },
 
   // Attractions: Ferris Wheel

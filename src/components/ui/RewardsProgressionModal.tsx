@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../../stores/useGameStore';
 import { KNOWN_COSMETICS, type CosmeticItem } from '../../types/rewards';
 import { FESTIVAL_ACHIEVEMENTS_CONFIG } from '../../types/achievements';
@@ -38,6 +38,15 @@ export const RewardsProgressionModal: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'wallet' | 'wardrobe' | 'progression'>('wardrobe');
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeModal !== 'rewards') return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeModal();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeModal, closeModal]);
 
   if (activeModal !== 'rewards') return null;
 

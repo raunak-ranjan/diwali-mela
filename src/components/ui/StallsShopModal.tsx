@@ -25,6 +25,15 @@ export const StallsShopModal: React.FC = () => {
     return () => clearTimeout(t);
   }, [errorMessage]);
 
+  useEffect(() => {
+    if (activeModal !== 'shop') return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeModal();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeModal, closeModal]);
+
   if (activeModal !== 'shop') return null;
 
   // Contextual vendor dialogue

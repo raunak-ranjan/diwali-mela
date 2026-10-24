@@ -104,6 +104,19 @@ export const BalloonShootingUI: React.FC = () => {
     startBalloonGame();
   };
 
+  useEffect(() => {
+    if (activeModal !== 'balloon_game') return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeModal();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeModal, closeModal]);
+
   if (activeModal !== 'balloon_game') return null;
 
   const rewardTokens = calculateBalloonReward(balloonGame.score);

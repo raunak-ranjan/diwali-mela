@@ -85,6 +85,7 @@ export interface SaveDataV1 {
   achievements?: string[];
   claimedAchievements?: string[];
   missions?: MissionJournalSaveState;
+  tutorialCompleted?: boolean;
   settings: {
     graphicsQuality: GraphicsQuality;
     masterVolume: number;

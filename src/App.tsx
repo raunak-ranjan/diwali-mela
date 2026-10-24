@@ -19,6 +19,7 @@ import { SettingsModal } from './components/ui/SettingsModal';
 import { PauseMenu } from './components/ui/PauseMenu';
 import { RewardsProgressionModal } from './components/ui/RewardsProgressionModal';
 import { FestivalPouchModal } from './components/ui/FestivalPouchModal';
+import { TutorialModal } from './components/ui/TutorialModal';
 import { VendorGreetingBanner } from './components/ui/VendorGreetingBanner';
 import { DevPerformanceTracker, DevPerformanceOverlay } from './components/dev/DevPerformanceTelemetry';
 import { useGameStore } from './stores/useGameStore';
@@ -94,8 +95,9 @@ export function App() {
       <StageScreenOverlay />
       {import.meta.env.DEV && <DevPerformanceOverlay />}
 
-      {/* Immediate Welcome Screen */}
+      {/* Immediate Welcome Screen & Tutorial Walkthrough */}
       <WelcomeScreen />
+      <TutorialModal />
 
       {/* Interactive Modals & Mini-Games */}
       <BalloonShootingUI />
