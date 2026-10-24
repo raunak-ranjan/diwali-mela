@@ -176,6 +176,7 @@ interface GameState {
     musicVolume: number;
     touchSensitivity: number;
     reducedMotion: boolean;
+    ambientFireworks: boolean;
   };
   // Actions
   initializeSave: () => Promise<void>;
@@ -436,6 +437,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     musicVolume: 0.6,
     touchSensitivity: 1.0,
     reducedMotion: false,
+    ambientFireworks: true,
   },
 
   initializeSave: async () => {

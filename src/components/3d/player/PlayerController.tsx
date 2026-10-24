@@ -15,6 +15,7 @@ import {
 } from '../../../systems/physics';
 import { PlayerCosmetics } from './PlayerCosmetics';
 import { PlayerSparkler } from './PlayerSparkler';
+import { soundEngine } from '../../../audio/soundEngine';
 
 export const PlayerController = () => {
   const { camera } = useThree();
@@ -236,6 +237,7 @@ export const PlayerController = () => {
       pos.current.set(cabinX, cabinY, cabinZ);
       if (playerRef.current) {
         playerRef.current.position.copy(pos.current);
+      soundEngine.updateListenerPosition(pos.current.x, pos.current.y, pos.current.z);
       }
 
       // First-person panoramic riding camera
