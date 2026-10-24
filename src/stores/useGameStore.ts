@@ -1,3 +1,12 @@
+import {
+  createDefaultMissionJournal,
+  recordMissionAction,
+  validateMissionClaim,
+  validateCollectiblePickup,
+  evaluateAchievements,
+  validateAchievementClaim,
+} from '../systems/progressionLogic';
+import type { MissionJournalSaveState } from '../types/missions';
 import { create } from 'zustand';
 import type { GameZone, InteractionPromptState, ShopItem, GraphicsQuality, MiniGameStats, QuestNotification } from '../types/game';
 import { KNOWN_COSMETICS, type PlayerCosmetics, type TokenTransaction } from '../types/rewards';
@@ -186,6 +195,16 @@ interface GameState {
     highScore: number;
     hitsCount: number;
   };
+  collectibles: string[];
+  achievements: string[];
+  claimedAchievements: string[];
+  missions: MissionJournalSaveState;
+  discoverCollectible: (collectibleId: string) => boolean;
+  advanceMission: (actionId: string, amount?: number) => void;
+  claimMissionReward: (missionId: string) => boolean;
+  claimAchievementReward: (achievementId: string) => boolean;
+  checkAchievements: () => void;
+
   // Attractions: Ferris Wheel, Cultural Stage & Fireworks
   ferrisWheelRide: {
     isRiding: boolean;
@@ -286,6 +305,11 @@ export const flushPendingPersist = () => {
       isCompleted: current.quest.isCompleted,
     },
     cosmetics: current.cosmetics,
+    collectibles: current.collectibles,
+    achievements: current.achievements,
+    claimedAchievements: current.claimedAchievements,
+    missions: current.missions,
+
     tokenHistory: current.tokenHistory,
     dailyDarshan: {
       date: current.dailyDarshan.date,
@@ -416,6 +440,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   recentTokenDelta: null,
   activeModal: 'welcome',
   activeShopCategory: 'all',
+  collectibles: [],
+  achievements: [],
+  claimedAchievements: [],
+  missions: createDefaultMissionJournal(),
   prompt: null,
   quest: {
     id: 'five_sacred_diyas',
@@ -544,6 +572,11 @@ export const useGameStore = create<GameState>((set, get) => ({
         litDiyas: data.litDiyas,
         stats: data.stats,
         cosmetics: data.cosmetics || { unlocked: [], equipped: null },
+        collectibles: data.collectibles || [],
+        achievements: data.achievements || [],
+        claimedAchievements: data.claimedAchievements || [],
+        missions: data.missions || createDefaultMissionJournal(),
+
         tokenHistory: data.tokenHistory && data.tokenHistory.length > 0
           ? data.tokenHistory
           : [
@@ -595,7 +628,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ gameStarted: true, activeModal: 'none' });
   },
 
-  setCurrentZone: (zone: GameZone) => {
+    setCurrentZone: (zone: GameZone) => {
+    get().advanceMission('visit_' + zone);
     if (get().currentZone === zone) return;
     set({ currentZone: zone });
   },
@@ -967,6 +1001,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         : current.questNotification,
     });
     persistState(get());
+    get().advanceMission('kindle_diya');
+    get().checkAchievements();
   },
 
   completeRangoli: () => {
@@ -1102,6 +1138,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     persistState(get());
+    get().advanceMission('kindle_diya');
+    get().checkAchievements();
     return true;
   },
 
@@ -1133,6 +1171,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         : current.questNotification,
     });
     persistState(get());
+    get().advanceMission('watch_fireworks');
+    get().checkAchievements();
   },
 
   claimDailyBonus: () => {
@@ -1412,6 +1452,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         : current.questNotification,
     });
     persistState(get());
+    get().advanceMission('play_balloon_game');
+    get().checkAchievements();
   },
 
   startRingTossGame: () => {
@@ -1532,6 +1574,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     persistState(get());
+    get().advanceMission('play_ring_toss');
+    get().checkAchievements();
   },
 
   cancelRingTossGame: () => {
@@ -1545,6 +1589,185 @@ export const useGameStore = create<GameState>((set, get) => ({
         timeLeft: RING_TOSS_TIME_LIMIT,
       },
     });
+  },
+
+  checkAchievements: () => {
+    const current = get();
+    const context = {
+      stats: current.stats,
+      magicalDiyasCount: current.quest.collectedDiyas.length,
+      collectiblesCount: current.collectibles.length,
+      hasWatchedFireworks: (current.stats.fireworksWatchedCount || 0) > 0,
+      hasEnjoyedStage: current.culturalStageState.isPlayingMusic,
+      ringTossHits: current.ringTossGame.hitsCount || (current.stats.ringTossHighScore > 0 ? 1 : 0),
+      dailyStreak: current.dailyDarshan.streak,
+    };
+
+    const newlyUnlocked = evaluateAchievements(current.achievements, context);
+    if (newlyUnlocked.length === 0) return;
+
+    const updatedAchievements = [...current.achievements, ...newlyUnlocked.map((a) => a.id)];
+    const firstAch = newlyUnlocked[0];
+
+    soundEngine.playQuestComplete();
+
+    set({
+      achievements: updatedAchievements,
+      questNotification: !current.questNotification
+        ? {
+            id: 'ach_' + firstAch.id + '_' + Date.now(),
+            title: '🏆 Achievement Unlocked!',
+            message: firstAch.title + ': ' + firstAch.description,
+            type: 'completed',
+            timestamp: Date.now(),
+          }
+        : current.questNotification,
+    });
+    persistState(get());
+  },
+
+  advanceMission: (actionId: string, amount = 1) => {
+    const current = get();
+    const { updatedJournal, justCompletedStep, justCompletedMission, completedMission } =
+      recordMissionAction(current.missions, actionId, amount);
+
+    if (!justCompletedStep && !justCompletedMission) return;
+
+    if (justCompletedMission && completedMission) {
+      soundEngine.playQuestComplete();
+      set({
+        missions: updatedJournal,
+        questNotification: {
+          id: 'mission_completed_' + completedMission.id + '_' + Date.now(),
+          title: '🎉 Festival Mission Complete!',
+          message: completedMission.title + ' fulfilled! Open Missions to claim reward.',
+          type: 'completed',
+          timestamp: Date.now(),
+        },
+      });
+    } else if (justCompletedStep) {
+      soundEngine.playQuestChime();
+      set({ missions: updatedJournal });
+    }
+    persistState(get());
+    get().checkAchievements();
+  },
+
+  claimMissionReward: (missionId: string) => {
+    const current = get();
+    const validation = validateMissionClaim(current.missions, missionId);
+    if (!validation.valid) return false;
+
+    const reward = validation.rewardTokens;
+    soundEngine.playTokenEarned();
+    const newTokens = current.tokens + reward;
+    const newStats = {
+      ...current.stats,
+      totalTokensEarned: (current.stats.totalTokensEarned ?? current.tokens) + reward,
+    };
+    const updatedHistory = [
+      ...current.tokenHistory,
+      {
+        id: 'mission_reward_' + Date.now(),
+        amount: reward,
+        source: 'Mission Reward: ' + missionId,
+        timestamp: Date.now(),
+      },
+    ].slice(-20);
+
+    set({
+      tokens: newTokens,
+      stats: newStats,
+      tokenHistory: updatedHistory,
+      recentTokenDelta: { amount: reward, id: String(Date.now()) },
+      missions: validation.updatedJournal,
+    });
+    persistState(get());
+    return true;
+  },
+
+  discoverCollectible: (collectibleId: string) => {
+    const current = get();
+    const result = validateCollectiblePickup(current.collectibles, collectibleId);
+    if (!result.valid || !result.config) return false;
+
+    const keepsake = result.config;
+    soundEngine.playQuestChime();
+    soundEngine.playTokenEarned();
+
+    const reward = keepsake.rewardTokens;
+    const newTokens = current.tokens + reward;
+    const newStats = {
+      ...current.stats,
+      totalTokensEarned: (current.stats.totalTokensEarned ?? current.tokens) + reward,
+    };
+    const updatedHistory = [
+      ...current.tokenHistory,
+      {
+        id: 'keepsake_' + Date.now(),
+        amount: reward,
+        source: 'Discovered: ' + keepsake.name,
+        timestamp: Date.now(),
+      },
+    ].slice(-20);
+
+    set({
+      collectibles: result.updatedList,
+      tokens: newTokens,
+      stats: newStats,
+      tokenHistory: updatedHistory,
+      recentTokenDelta: { amount: reward, id: String(Date.now()) },
+      prompt: current.prompt?.id === collectibleId ? null : current.prompt,
+      questNotification: {
+        id: 'keepsake_' + collectibleId + '_' + Date.now(),
+        title: '✨ Keepsake Discovered: ' + keepsake.name,
+        message: keepsake.description + ' (+' + reward + ' 🪙)',
+        type: 'collected',
+        timestamp: Date.now(),
+      },
+    });
+
+    persistState(get());
+    get().advanceMission('collect_keepsake');
+    get().checkAchievements();
+    return true;
+  },
+
+  claimAchievementReward: (achievementId: string) => {
+    const current = get();
+    const validation = validateAchievementClaim(
+      current.achievements,
+      current.claimedAchievements,
+      achievementId
+    );
+    if (!validation.valid) return false;
+
+    const reward = validation.rewardTokens;
+    soundEngine.playTokenEarned();
+    const newTokens = current.tokens + reward;
+    const newStats = {
+      ...current.stats,
+      totalTokensEarned: (current.stats.totalTokensEarned ?? current.tokens) + reward,
+    };
+    const updatedHistory = [
+      ...current.tokenHistory,
+      {
+        id: 'achievement_reward_' + Date.now(),
+        amount: reward,
+        source: 'Achievement Reward: ' + achievementId,
+        timestamp: Date.now(),
+      },
+    ].slice(-20);
+
+    set({
+      tokens: newTokens,
+      stats: newStats,
+      tokenHistory: updatedHistory,
+      recentTokenDelta: { amount: reward, id: String(Date.now()) },
+      claimedAchievements: validation.updatedClaimedList,
+    });
+    persistState(get());
+    return true;
   },
 
   // Attractions: Ferris Wheel

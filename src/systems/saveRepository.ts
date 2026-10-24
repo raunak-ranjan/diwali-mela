@@ -1,3 +1,7 @@
+import { createDefaultMissionJournal } from './progressionLogic';
+import { KNOWN_MISSION_IDS, type MissionJournalSaveState } from '../types/missions';
+import { KNOWN_COLLECTIBLE_IDS } from '../types/collectibles';
+import { KNOWN_ACHIEVEMENT_IDS } from '../types/achievements';
 import type { SaveDataV1, MiniGameStats } from '../types/game';
 import { KNOWN_COSMETIC_IDS, type TokenTransaction } from '../types/rewards';
 import { type DailyDarshanSaveState, getCalendarDateString } from '../types/daily';
@@ -34,6 +38,10 @@ export const DEFAULT_SAVE_DATA: SaveDataV1 = {
     collectedDiyas: [],
     isCompleted: false,
   },
+  collectibles: [],
+  achievements: [],
+  claimedAchievements: [],
+  missions: createDefaultMissionJournal(),
   cosmetics: {
     unlocked: [],
     equipped: null,
@@ -130,7 +138,7 @@ export class LocalSaveRepository implements ISaveRepository {
       const storage = this.getStorage();
       if (!this.isStorageAvailable() || !storage) {
         return this.memoryFallback
-          ? JSON.parse(JSON.stringify(this.memoryFallback))
+          ? (this.migrateAndSanitize(this.memoryFallback) || this.getDefault())
           : this.getDefault();
       }
 
@@ -198,8 +206,9 @@ export class LocalSaveRepository implements ISaveRepository {
         console.error('[SaveRepository] Attempted to persist invalid save data schema.');
         return false;
       }
+      const sanitized = this.migrateAndSanitize(data) || data;
       const dataWithTimestamp: SaveDataV1 = {
-        ...data,
+        ...sanitized,
         lastSavedAt: Date.now(),
       };
       const serialized = JSON.stringify(dataWithTimestamp);
@@ -365,6 +374,50 @@ export class LocalSaveRepository implements ISaveRepository {
       equipped,
     };
 
+
+    // Sanitize collectibles
+    const collectibles: string[] = Array.isArray(data.collectibles)
+      ? Array.from(new Set(data.collectibles.filter((id: unknown): id is string => typeof id === 'string' && (KNOWN_COLLECTIBLE_IDS as readonly string[]).includes(id))))
+      : [];
+
+    // Sanitize achievements
+    const achievements: string[] = Array.isArray(data.achievements)
+      ? Array.from(new Set(data.achievements.filter((id: unknown): id is string => typeof id === 'string' && (KNOWN_ACHIEVEMENT_IDS as readonly string[]).includes(id))))
+      : [];
+
+    // Sanitize claimed achievements
+    const claimedAchievements: string[] = Array.isArray(data.claimedAchievements)
+      ? Array.from(new Set(data.claimedAchievements.filter((id: unknown): id is string => typeof id === 'string' && (KNOWN_ACHIEVEMENT_IDS as readonly string[]).includes(id))))
+      : [];
+
+    // Sanitize missions
+    let missions: MissionJournalSaveState = createDefaultMissionJournal();
+    if (data.missions && typeof data.missions === 'object') {
+      const rawMissions = data.missions as any;
+      const activeId = typeof rawMissions.activeMissionId === 'string' && (KNOWN_MISSION_IDS as readonly string[]).includes(rawMissions.activeMissionId)
+        ? rawMissions.activeMissionId
+        : missions.activeMissionId;
+      const progressMap = typeof rawMissions.progress === 'object' && rawMissions.progress !== null
+        ? rawMissions.progress
+        : {};
+      const sanitizedProgress = { ...missions.progress };
+      for (const missionId of KNOWN_MISSION_IDS) {
+        if (progressMap[missionId]) {
+          const p = progressMap[missionId];
+          sanitizedProgress[missionId] = {
+            currentStepIndex: typeof p.currentStepIndex === 'number' && p.currentStepIndex >= 0 ? p.currentStepIndex : 0,
+            stepCounts: typeof p.stepCounts === 'object' && p.stepCounts !== null ? p.stepCounts : {},
+            isCompleted: Boolean(p.isCompleted),
+            isClaimed: Boolean(p.isClaimed),
+          };
+        }
+      }
+      missions = {
+        activeMissionId: activeId,
+        progress: sanitizedProgress,
+      };
+    }
+
     // Sanitize token history
     const rawHistory = Array.isArray(data.tokenHistory) ? data.tokenHistory : [];
     const tokenHistory: TokenTransaction[] = rawHistory
@@ -436,6 +489,10 @@ export class LocalSaveRepository implements ISaveRepository {
       litDiyas,
       stats,
       quest,
+      collectibles,
+      achievements,
+      claimedAchievements,
+      missions,
       cosmetics,
       tokenHistory,
       dailyDarshan,
