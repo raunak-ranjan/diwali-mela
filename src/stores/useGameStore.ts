@@ -429,6 +429,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     fireworksWatchedCount: 0,
     magicalDiyasCollected: 0,
     questCompleted: false,
+    balloonLeaderboard: [],
+    ringTossLeaderboard: [],
   },
   cosmetics: {
     unlocked: [],

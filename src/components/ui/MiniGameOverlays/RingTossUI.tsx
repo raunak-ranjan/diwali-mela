@@ -38,7 +38,9 @@ export const RingTossUI: React.FC = () => {
   const tickRingTossGame = useGameStore((s) => s.tickRingTossGame);
   const cancelRingTossGame = useGameStore((s) => s.cancelRingTossGame);
   const reducedMotion = useGameStore((s) => s.settings.reducedMotion);
-  const leaderboard = useGameStore((s) => s.stats.ringTossLeaderboard || []);
+  const EMPTY_LEADERBOARD: any[] = [];
+  const rawLeaderboard = useGameStore((s) => s.stats.ringTossLeaderboard);
+  const leaderboard = rawLeaderboard || EMPTY_LEADERBOARD;
 
   // Phase derived purely from authoritative game store state
   const phase: 'ready' | 'playing' | 'finished' =

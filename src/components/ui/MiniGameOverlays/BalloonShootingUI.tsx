@@ -43,7 +43,9 @@ export const BalloonShootingUI: React.FC = () => {
   const startBalloonGame = useGameStore((s) => s.startBalloonGame);
   const recordBalloonHit = useGameStore((s) => s.recordBalloonHit);
   const tickBalloonGame = useGameStore((s) => s.tickBalloonGame);
-  const leaderboard = useGameStore((s) => s.stats.balloonLeaderboard || []);
+  const EMPTY_LEADERBOARD: any[] = [];
+  const rawLeaderboard = useGameStore((s) => s.stats.balloonLeaderboard);
+  const leaderboard = rawLeaderboard || EMPTY_LEADERBOARD;
 
   const [crosshairPos, setCrosshairPos] = useState({ x: 50, y: 50 });
   const containerRef = useRef<HTMLDivElement>(null);
