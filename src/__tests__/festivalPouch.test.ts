@@ -1,9 +1,13 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useGameStore, SHOP_CATALOG } from '../stores/useGameStore';
 import { saveRepository } from '../systems/saveRepository';
+import { getCalendarDateString } from '../types/daily';
 
 describe('Festival Pouch & Interactive Inventory Mechanics', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-22T12:00:00Z'));
+
     // Mock storage
     const mockStorage: Record<string, string> = {};
     vi.stubGlobal('localStorage', {
@@ -40,7 +44,7 @@ describe('Festival Pouch & Interactive Inventory Mechanics', () => {
         shrineOfferingsCount: 0,
       },
       dailyDarshan: {
-        date: '2026-10-22',
+        date: getCalendarDateString(),
         challenges: [
           {
             id: 'c_taste_sweet_1',
@@ -53,6 +57,17 @@ describe('Festival Pouch & Interactive Inventory Mechanics', () => {
             isCompleted: false,
             icon: '🍯',
           },
+          {
+            id: 'c_visit_attraction_1',
+            type: 'visit_attraction',
+            title: 'Mela Sightseer',
+            hindiTitle: 'मेला भ्रमण',
+            description: 'Ride Ferris Wheel',
+            target: 1,
+            current: 0,
+            isCompleted: false,
+            icon: '🎡',
+          },
         ],
         isAllCompleted: false,
         isClaimed: false,
@@ -61,6 +76,10 @@ describe('Festival Pouch & Interactive Inventory Mechanics', () => {
         claimedDates: [],
       },
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('deducts exactly one sweet when consuming valid owned mithai', () => {
@@ -116,16 +135,29 @@ describe('Festival Pouch & Interactive Inventory Mechanics', () => {
   });
 
   it('advances matching daily challenge only through valid sweet tasting', () => {
-    const dailyBefore = useGameStore.getState().dailyDarshan.challenges[0];
-    expect(dailyBefore.current).toBe(0);
-    expect(dailyBefore.isCompleted).toBe(false);
+    const sweetBefore = useGameStore.getState().dailyDarshan.challenges.find((c) => c.type === 'taste_sweet');
+    const otherBefore = useGameStore.getState().dailyDarshan.challenges.find((c) => c.type === 'visit_attraction');
+    expect(sweetBefore).toBeDefined();
+    expect(sweetBefore!.current).toBe(0);
+    expect(sweetBefore!.isCompleted).toBe(false);
+    expect(otherBefore).toBeDefined();
+    expect(otherBefore!.current).toBe(0);
+    expect(otherBefore!.isCompleted).toBe(false);
 
     // Consume 1 sweet
-    useGameStore.getState().consumeInventoryItem('gulab_jamun');
+    const result = useGameStore.getState().consumeInventoryItem('gulab_jamun');
+    expect(result.success).toBe(true);
 
-    const dailyAfter = useGameStore.getState().dailyDarshan.challenges[0];
-    expect(dailyAfter.current).toBe(1);
-    expect(dailyAfter.isCompleted).toBe(true);
+    const sweetAfter = useGameStore.getState().dailyDarshan.challenges.find((c) => c.type === 'taste_sweet');
+    const otherAfter = useGameStore.getState().dailyDarshan.challenges.find((c) => c.type === 'visit_attraction');
+    expect(sweetAfter).toBeDefined();
+    expect(sweetAfter!.current).toBe(1);
+    expect(sweetAfter!.isCompleted).toBe(true);
+
+    // Verify unrelated challenge is not advanced
+    expect(otherAfter).toBeDefined();
+    expect(otherAfter!.current).toBe(0);
+    expect(otherAfter!.isCompleted).toBe(false);
   });
 
   it('handles phooljhadi sparkler activation, timer, and duplicate protection', () => {
