@@ -1,4 +1,4 @@
-import type { AmbientVisitorConfig, VendorNpcConfig } from '../types/npc';
+import type { AmbientVisitorConfig, VendorNpcConfig, MelaQueueConfig } from '../types/npc';
 import type { BoundingBox2D } from './npcLogic';
 
 export const RESTRICTED_MELA_ZONES: BoundingBox2D[] = [
@@ -11,6 +11,56 @@ export const RESTRICTED_MELA_ZONES: BoundingBox2D[] = [
   { id: 'ferris_wheel', minX: 16, maxX: 28, minZ: 14, maxZ: 26 },
   { id: 'cultural_stage', minX: -9, maxX: 9, minZ: 32, maxZ: 42 },
   { id: 'central_urli', minX: -2.2, maxX: 2.2, minZ: -2.2, maxZ: 2.2 },
+];
+
+export const MELA_QUEUES: MelaQueueConfig[] = [
+  {
+    id: 'queue_mithai',
+    name: 'Mithai Sweets Stall Queue',
+    servicePoint: [-10.2, 0, 6.0],
+    slots: [
+      [-10.2, 0, 6.0],
+      [-8.6, 0, 6.0],
+      [-7.0, 0, 6.0],
+    ],
+    facingYaw: -Math.PI / 2, // Facing West toward the sweet stall counter
+    serviceDuration: 4.5,
+  },
+  {
+    id: 'queue_chaat',
+    name: 'Old Delhi Chaat Stall Queue',
+    servicePoint: [-10.2, 0, 15.0],
+    slots: [
+      [-10.2, 0, 15.0],
+      [-8.6, 0, 15.0],
+      [-7.0, 0, 15.0],
+    ],
+    facingYaw: -Math.PI / 2, // Facing West toward chaat counter
+    serviceDuration: 4.0,
+  },
+  {
+    id: 'queue_ferris_wheel',
+    name: 'Giant Ferris Wheel Ride Queue',
+    servicePoint: [15.0, 0, 20.0],
+    slots: [
+      [15.0, 0, 20.0],
+      [13.5, 0, 20.0],
+      [12.0, 0, 20.0],
+    ],
+    facingYaw: Math.PI / 2, // Facing East toward the Ferris wheel boarding steps
+    serviceDuration: 5.5,
+  },
+  {
+    id: 'queue_balloon',
+    name: 'Balloon Shooting Booth Queue',
+    servicePoint: [10.5, 0, 6.0],
+    slots: [
+      [10.5, 0, 6.0],
+      [9.0, 0, 6.0],
+    ],
+    facingYaw: Math.PI / 2, // Facing East toward the target gallery
+    serviceDuration: 4.0,
+  },
 ];
 
 export const AMBIENT_VISITORS: AmbientVisitorConfig[] = [
@@ -78,6 +128,8 @@ export const AMBIENT_VISITORS: AmbientVisitorConfig[] = [
       pyjamaColor: '#ffffff',
       juttiColor: '#92400e',
     },
+    targetQueueId: 'queue_chaat',
+    watchFocusPoint: [0, 2, 36],
   },
   {
     id: 'visitor_ananya',
@@ -100,6 +152,7 @@ export const AMBIENT_VISITORS: AmbientVisitorConfig[] = [
       juttiColor: '#d97706',
     },
     accessory: 'sparkler',
+    targetQueueId: 'queue_mithai',
   },
   {
     id: 'visitor_kabir',
@@ -122,6 +175,51 @@ export const AMBIENT_VISITORS: AmbientVisitorConfig[] = [
       pyjamaColor: '#f8fafc',
       juttiColor: '#451a03',
     },
+    targetQueueId: 'queue_ferris_wheel',
+  },
+  {
+    id: 'visitor_meera',
+    name: 'Meera',
+    role: 'spectator',
+    tier: 'standard',
+    speed: 1.05,
+    pauseDuration: 5.0,
+    waypoints: [
+      [0.0, 0, 20.0],
+      [3.0, 0, 22.0],
+      [-3.0, 0, 22.0],
+    ],
+    outfit: {
+      skinColor: '#e0a96d',
+      kurtaColor: '#7c3aed',
+      stoleColor: '#fde047',
+      pyjamaColor: '#fef3c7',
+      juttiColor: '#6d28d9',
+    },
+    watchFocusPoint: [0, 2, 36],
+  },
+  {
+    id: 'visitor_vikram',
+    name: 'Vikram',
+    role: 'shopper',
+    tier: 'standard',
+    speed: 1.15,
+    pauseDuration: 3.8,
+    waypoints: [
+      [-6.0, 0, 6.0],
+      [-6.0, 0, 12.0],
+      [-6.0, 0, 15.0],
+      [-5.0, 0, 9.0],
+    ],
+    outfit: {
+      skinColor: '#c5834b',
+      kurtaColor: '#0284c7',
+      pagriColor: '#ea580c',
+      pagriAccentColor: '#fbbf24',
+      pyjamaColor: '#ffffff',
+      juttiColor: '#0369a1',
+    },
+    targetQueueId: 'queue_chaat',
   },
 ];
 

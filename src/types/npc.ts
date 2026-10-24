@@ -1,4 +1,4 @@
-export type NpcState = 'idle' | 'walking' | 'pausing' | 'turning';
+export type NpcState = 'idle' | 'walking' | 'pausing' | 'turning' | 'queuing' | 'watching';
 
 export type Waypoint = [number, number, number];
 
@@ -14,6 +14,18 @@ export interface NpcOutfit {
 
 export type CrowdDensity = 'full' | 'reduced' | 'off';
 
+export interface MelaQueueConfig {
+  id: string;
+  name: string;
+  servicePoint: Waypoint;
+  /** Ordered slots: slot 0 is the front counter/service point, slot 1 is next in line, etc. */
+  slots: Waypoint[];
+  /** Approximate orientation (yaw) while standing in queue facing the counter/attraction */
+  facingYaw: number;
+  /** Service duration in seconds at slot 0 */
+  serviceDuration: number;
+}
+
 export interface AmbientVisitorConfig {
   id: string;
   name: string;
@@ -24,6 +36,10 @@ export interface AmbientVisitorConfig {
   outfit: NpcOutfit;
   accessory?: 'diya' | 'sparkler' | 'mala';
   tier: 'essential' | 'standard'; // 'essential' rendered in 'reduced' mode; both rendered in 'full'
+  /** Optional queue this visitor is interested in visiting during their mela tour */
+  targetQueueId?: string;
+  /** Optional specific landmark orientation when pausing/watching */
+  watchFocusPoint?: Waypoint;
 }
 
 export interface VendorNpcConfig {

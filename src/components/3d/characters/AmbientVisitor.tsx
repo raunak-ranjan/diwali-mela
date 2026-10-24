@@ -1,9 +1,10 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { FestiveCharacterMesh } from './FestiveCharacterMesh';
 import type { AmbientVisitorConfig } from '../../../types/npc';
-import { advanceNpcSimulation, type NpcSimulationState } from '../../../systems/npcLogic';
+import { advanceAutonomousNpc, type NpcSimulationState } from '../../../systems/npcLogic';
+import { npcCoordinator } from '../../../systems/npcCoordinator';
 
 interface AmbientVisitorProps {
   config: AmbientVisitorConfig;
@@ -21,7 +22,17 @@ export const AmbientVisitor: React.FC<AmbientVisitorProps> = ({ config, reducedM
     state: 'walking',
     pauseTimer: 0,
     yaw: 0,
+    queueId: null,
+    queueSlotIndex: undefined,
   });
+
+  // Register in coordinator on mount, cleanup on unmount
+  useEffect(() => {
+    npcCoordinator.updatePosition(config.id, simState.current.position);
+    return () => {
+      npcCoordinator.removeNpc(config.id);
+    };
+  }, [config.id]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -30,15 +41,58 @@ export const AmbientVisitor: React.FC<AmbientVisitorProps> = ({ config, reducedM
     const dt = Math.min(delta, 0.1);
     const speed = reducedMotion ? config.speed * 0.7 : config.speed;
 
-    // Advance pure simulation state
-    const nextState = advanceNpcSimulation(
-      simState.current,
-      config.waypoints,
-      speed,
-      config.pauseDuration,
-      dt
+    // Synchronize current queue slot index if in a queue
+    if (simState.current.state === 'queuing' && simState.current.queueId) {
+      const activeSlot = npcCoordinator.getNpcQueueSlot(simState.current.queueId, config.id);
+      if (activeSlot !== -1) {
+        simState.current.queueSlotIndex = activeSlot;
+      }
+    }
+
+    const otherPositions = npcCoordinator.getOtherPositions(config.id);
+    const obstacles = npcCoordinator.getRestrictedZones();
+    const currentQueue = simState.current.queueId
+      ? npcCoordinator.getQueue(simState.current.queueId)
+      : config.targetQueueId
+        ? npcCoordinator.getQueue(config.targetQueueId)
+        : null;
+
+    // Advance pure autonomous simulation state
+    const { nextState, queueAction } = advanceAutonomousNpc(
+      { ...simState.current, speed: config.speed } as any,
+      { ...config, speed },
+      dt,
+      {
+        otherNpcPositions: otherPositions,
+        obstacles,
+        currentQueue: currentQueue || null,
+        personalSpace: 0.95,
+      }
     );
+
+    // Handle queue join/leave intents from simulation
+    if (queueAction === 'join_queue' && config.targetQueueId) {
+      const joinResult = npcCoordinator.tryJoinQueue(config.targetQueueId, config.id);
+      if (joinResult.success) {
+        nextState.state = 'queuing';
+        nextState.queueId = config.targetQueueId;
+        nextState.queueSlotIndex = joinResult.slotIndex;
+      } else {
+        // Queue full, continue pausing/wandering
+        nextState.state = 'pausing';
+        nextState.queueId = null;
+        nextState.queueSlotIndex = undefined;
+      }
+    } else if (queueAction === 'leave_queue' && simState.current.queueId) {
+      npcCoordinator.leaveQueue(simState.current.queueId, config.id);
+      nextState.queueId = null;
+      nextState.queueSlotIndex = undefined;
+    }
+
     simState.current = nextState;
+
+    // Update coordinator position for neighbor pedestrian avoidance
+    npcCoordinator.updatePosition(config.id, nextState.position);
 
     // Apply 3D transform
     groupRef.current.position.set(
@@ -49,7 +103,6 @@ export const AmbientVisitor: React.FC<AmbientVisitorProps> = ({ config, reducedM
 
     // Smoothly slerp rotation towards target yaw
     const currentRotY = groupRef.current.rotation.y;
-    // Shortest angular difference
     let diff = nextState.yaw - currentRotY;
     while (diff < -Math.PI) diff += Math.PI * 2;
     while (diff > Math.PI) diff -= Math.PI * 2;

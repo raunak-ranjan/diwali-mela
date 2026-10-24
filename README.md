@@ -21,6 +21,11 @@ A realistic, cinematic, browser-based **3D Diwali Mela web experience** inspired
   - *Giant Illuminated Ferris Wheel:* Rotating neon wheel with 8 passenger gondolas that stay vertically aligned.
   - *Cultural Sangeet Stage:* Elevated Rajasthani jharokha stage with traditional Indian instruments (Dholak, Tabla, Bayan, Dayan).
   - *Grand Fireworks Finale:* Synchronized fireworks barrage, explosive multi-color particle bursts, confetti, and celebratory Deepavali blessings.
+- **Living Mela Autonomous Visitors & Stall Queues:**
+  - *Autonomous Pedestrians:* Visitors (Aarav, Priya, Rohan, Ananya, Kabir, Meera, Vikram) walk between mela POIs, enjoy rangolis, view stage performances, and visit attractions.
+  - *Pedestrian Repulsion:* Real-time proximity-based avoidance prevents NPCs from walking into or overlapping each other.
+  - *Stall Queuing System:* Visitors line up in designated queue slots at Sweet/Chaat stalls, the Ferris wheel, and the balloon booth, step forward in line, and depart after service.
+  - *Performance Isolation:* All visitor updates run in WebGL frame loops with zero React re-render overhead.
 
 ---
 
@@ -47,7 +52,8 @@ A realistic, cinematic, browser-based **3D Diwali Mela web experience** inspired
 - **State Management:** Zustand (optimized selective state subscription without per-frame React re-renders)
 - **Styling:** Tailwind CSS (Festive gold, amber, and saffron color palette)
 - **Audio Engine:** High-performance procedural Web Audio API (zero external asset dependencies; synthesizes raga drone, balloon pops, rifle shots, fireworks explosions, and diya chimes)
-- **Collision & Physics:** High-performance swept-capsule obstacle sliding and boundary clamping system
+- **Collision & Physics:** Kinematic character physics foundation (gravity, jumping, grounded detection, delta-time independent substeps) + swept-capsule obstacle sliding and boundary clamping
+- **Autonomous Living Mela (NPC AI):** Lightweight pedestrian avoidance, obstacle-aware navigation, stall queues (Mithai, Chaat, Ferris Wheel, Balloon booth), and spectator watching behaviors running outside React state for constant 60 FPS
 - **Persistence:** Versioned `LocalSaveRepository` with schema validation and fallback recovery
 - **Testing:** Vitest (unit tests) & Playwright (browser automation)
 
