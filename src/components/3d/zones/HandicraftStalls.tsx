@@ -34,7 +34,7 @@ const counterDiyasGeometry = (() => {
 })();
 
 export const HandicraftStalls = () => {
-  const openModal = useGameStore((s) => s.openModal);
+  const openShopWithCategory = useGameStore((s) => s.openShopWithCategory);
 
   useEffect(() => {
     // West stalls further back:
@@ -50,14 +50,14 @@ export const HandicraftStalls = () => {
       sublabel: 'Kandils, Clay Diyas & Golden Sparklers',
       actionType: 'shop',
       onInteract: () => {
-        openModal('shop');
+        openShopWithCategory('diya');
       },
     });
 
     return () => {
       interactionRegistry.unregister('handicraft_shop');
     };
-  }, [openModal]);
+  }, [openShopWithCategory]);
 
   return (
     <group position={[-14, 0, -9]}>

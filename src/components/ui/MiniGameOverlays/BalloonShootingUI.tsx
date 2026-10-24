@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useGameStore } from '../../../stores/useGameStore';
+import { calculateBalloonReward } from '../../../systems/economyLogic';
 import { soundEngine } from '../../../audio/soundEngine';
-import { Crosshair, Trophy, Sparkles, X } from 'lucide-react';
+import { Crosshair, Trophy, Sparkles, X, RotateCcw } from 'lucide-react';
 
 interface BalloonItem {
   id: number;
@@ -12,39 +13,42 @@ interface BalloonItem {
   points: number;
 }
 
+const BALLOON_COLORS = [
+  '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#ec4899',
+  '#8b5cf6', '#f97316', '#06b6d4', '#84cc16', '#e11d48'
+];
+
+const generateBalloonGrid = (): BalloonItem[] => {
+  const list: BalloonItem[] = [];
+  let id = 0;
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 5; c++) {
+      list.push({
+        id: id++,
+        x: 20 + c * 15 + (Math.random() * 4 - 2),
+        y: 25 + r * 22 + (Math.random() * 4 - 2),
+        color: BALLOON_COLORS[(r * 5 + c) % BALLOON_COLORS.length],
+        isPopped: false,
+        points: (r === 0 ? 20 : r === 1 ? 15 : 10),
+      });
+    }
+  }
+  return list;
+};
+
 export const BalloonShootingUI: React.FC = () => {
   const activeModal = useGameStore((s) => s.activeModal);
   const closeModal = useGameStore((s) => s.closeModal);
   const balloonGame = useGameStore((s) => s.balloonGame);
+  const startBalloonGame = useGameStore((s) => s.startBalloonGame);
   const recordBalloonHit = useGameStore((s) => s.recordBalloonHit);
   const tickBalloonGame = useGameStore((s) => s.tickBalloonGame);
+  const leaderboard = useGameStore((s) => s.stats.balloonLeaderboard || []);
 
-  // Crosshair tracking
   const [crosshairPos, setCrosshairPos] = useState({ x: 50, y: 50 });
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Generate target board of 15 colorful balloons
-  const [balloons, setBalloons] = useState<BalloonItem[]>(() => {
-    const colors = [
-      '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#ec4899',
-      '#8b5cf6', '#f97316', '#06b6d4', '#84cc16', '#e11d48'
-    ];
-    const list: BalloonItem[] = [];
-    let id = 0;
-    for (let r = 0; r < 3; r++) {
-      for (let c = 0; c < 5; c++) {
-        list.push({
-          id: id++,
-          x: 20 + c * 15 + (Math.random() * 4 - 2),
-          y: 25 + r * 22 + (Math.random() * 4 - 2),
-          color: colors[(r * 5 + c) % colors.length],
-          isPopped: false,
-          points: (r === 0 ? 20 : r === 1 ? 15 : 10),
-        });
-      }
-    }
-    return list;
-  });
+  const [balloons, setBalloons] = useState<BalloonItem[]>(generateBalloonGrid);
 
   // Timer countdown
   useEffect(() => {
@@ -62,7 +66,6 @@ export const BalloonShootingUI: React.FC = () => {
 
     soundEngine.playShootSound();
 
-    // Check hit against balloons
     let clientX = 0;
     let clientY = 0;
 
@@ -81,7 +84,6 @@ export const BalloonShootingUI: React.FC = () => {
 
     setCrosshairPos({ x: clickX, y: clickY });
 
-    // Hit test with radius
     let hitFound = false;
     setBalloons((prev) =>
       prev.map((b) => {
@@ -97,7 +99,14 @@ export const BalloonShootingUI: React.FC = () => {
     );
   };
 
+  const handlePlayAgain = () => {
+    setBalloons(generateBalloonGrid());
+    startBalloonGame();
+  };
+
   if (activeModal !== 'balloon_game') return null;
+
+  const rewardTokens = calculateBalloonReward(balloonGame.score);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fadeIn select-none">
@@ -150,7 +159,6 @@ export const BalloonShootingUI: React.FC = () => {
 
         {/* Target Board Play Area */}
         <div className="relative w-full h-full my-2 border border-amber-500/20 rounded-2xl bg-amber-950/20 overflow-hidden">
-          {/* Wooden backboard slats effect */}
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:16px_16px]" />
 
           {/* Balloons */}
@@ -204,30 +212,64 @@ export const BalloonShootingUI: React.FC = () => {
         {/* Completion Modal when timer runs out */}
         {!balloonGame.isPlaying && (
           <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-30 animate-fadeIn">
-            <Trophy className="w-16 h-16 text-festive-gold mb-3 animate-bounce" />
-            <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-festive-gold to-festive-saffron">
+            <Trophy className="w-16 h-16 text-festive-gold mb-2 animate-bounce" />
+            <h2 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-festive-gold to-festive-saffron">
               BOOTH COMPLETED!
             </h2>
-            <p className="text-gray-300 mt-1 text-sm">Shabash! Great aiming at the carnival.</p>
+            <p className="text-gray-300 mt-0.5 text-xs">Shabash! Great shooting at the carnival gallery.</p>
 
-            <div className="bg-slate-900/80 border border-amber-500/40 rounded-2xl p-4 my-4 w-64">
-              <div className="text-xs uppercase text-gray-400">Final Score</div>
-              <div className="text-3xl font-black text-festive-gold font-mono">{balloonGame.score}</div>
-              <div className="text-xs text-festive-saffron mt-2 font-bold flex items-center justify-center gap-1">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>+ {Math.max(10, Math.floor(balloonGame.score / 2))} Virtual Tokens Earned!</span>
+            {/* Score & Reward Card */}
+            <div className="bg-slate-900/90 border-2 border-festive-gold/50 rounded-2xl p-3.5 my-3 w-72 flex flex-col gap-2">
+              <div className="flex justify-between items-center text-xs pb-1.5 border-b border-slate-800">
+                <span className="text-gray-400">Final Score:</span>
+                <span className="text-2xl font-black text-festive-gold font-mono">{balloonGame.score} pts</span>
               </div>
+              <div className="flex justify-between items-center text-xs pb-1.5 border-b border-slate-800">
+                <span className="text-gray-400">Personal Best:</span>
+                <span className="text-sm font-bold text-amber-300 font-mono">{balloonGame.highScore} pts</span>
+              </div>
+              <div className="flex justify-between items-center text-xs pt-0.5">
+                <span className="font-bold text-festive-saffron">Tokens Earned:</span>
+                <span className="text-sm font-black text-festive-gold flex items-center gap-1 font-mono">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  +{rewardTokens} 🪙
+                </span>
+              </div>
+
+              {/* Local Best Runs */}
+              {leaderboard.length > 0 && (
+                <div className="mt-1 pt-2 border-t border-slate-800 text-[10px] text-gray-400">
+                  <span className="font-bold text-gray-300">Recent Personal Bests:</span>
+                  <div className="flex justify-center gap-2 mt-1">
+                    {leaderboard.map((entry, idx) => (
+                      <span key={idx} className="bg-slate-800 px-2 py-0.5 rounded-full font-mono text-amber-300">
+                        #{idx + 1}: {entry.score}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
+                  handlePlayAgain();
+                }}
+                className="py-2.5 px-5 rounded-xl font-bold text-amber-950 bg-gradient-to-r from-festive-gold to-festive-saffron hover:brightness-110 active:scale-95 transition-all shadow-lg cursor-pointer flex items-center gap-1.5 text-xs"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>Play Again</span>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
                   closeModal();
                 }}
-                className="py-2.5 px-6 rounded-xl font-bold text-amber-950 bg-gradient-to-r from-festive-gold to-festive-saffron hover:brightness-110 active:scale-95 transition-all shadow-lg cursor-pointer"
+                className="py-2.5 px-5 rounded-xl font-bold text-gray-300 bg-slate-800 hover:bg-slate-700 transition-all text-xs cursor-pointer"
               >
-                COLLECT REWARD & RETURN
+                Return to Mela
               </button>
             </div>
           </div>

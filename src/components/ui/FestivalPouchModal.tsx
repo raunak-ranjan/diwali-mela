@@ -213,10 +213,10 @@ export const FestivalPouchModal: React.FC = () => {
                 {/* Contextual Action Button */}
                 <div className="mt-3.5 pt-2.5 border-t border-slate-800/80 flex items-center justify-between">
                   <span className="text-[11px] text-slate-400 capitalize">
-                    {item.category === 'sweet' ? 'Consumable Mithai' : item.category === 'sparkler' ? 'Pyrotechnic' : item.category === 'diya' ? 'Sacred Offering' : 'Festival Keepsake'}
+                    {item.category === 'sweet' ? 'Consumable Mithai' : item.category === 'snack' ? 'Savory Snack' : item.category === 'sparkler' ? 'Pyrotechnic' : item.category === 'diya' ? 'Sacred Offering' : 'Festival Keepsake'}
                   </span>
 
-                  {item.category === 'sweet' && (
+                  {(item.category === 'sweet' || item.category === 'snack') && (
                     <button
                       onClick={() => handleEatSweet(item.id)}
                       disabled={owned <= 0}
@@ -228,7 +228,7 @@ export const FestivalPouchModal: React.FC = () => {
                       }`}
                     >
                       <Cookie className="w-3.5 h-3.5" />
-                      <span>{owned > 0 ? 'Eat Sweet' : 'Out of Stock'}</span>
+                      <span>{owned > 0 ? (item.category === 'snack' ? 'Enjoy Snack' : 'Eat Sweet') : 'Out of Stock'}</span>
                     </button>
                   )}
 
