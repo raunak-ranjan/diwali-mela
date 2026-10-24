@@ -12,6 +12,7 @@ import { StallsShopModal } from './components/ui/StallsShopModal';
 import { RangoliEditorUI } from './components/ui/RangoliEditorUI';
 import { FinaleModal } from './components/ui/FinaleModal';
 import { CulturalStageModal } from './components/ui/CulturalStageModal';
+import { SangeetVideoModal } from './components/ui/SangeetVideoModal';
 import { FireworksControlModal } from './components/ui/FireworksControlModal';
 import { FerrisWheelRideOverlay } from './components/ui/FerrisWheelRideOverlay';
 import { SettingsModal } from './components/ui/SettingsModal';
@@ -102,6 +103,7 @@ export function App() {
       <RangoliEditorUI />
       <FinaleModal />
       <CulturalStageModal />
+      <SangeetVideoModal />
       <FireworksControlModal />
       <SettingsModal />
       <PauseMenu />

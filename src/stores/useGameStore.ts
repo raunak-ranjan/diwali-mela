@@ -102,6 +102,7 @@ export type ActiveModalType =
   | 'rangoli'
   | 'finale'
   | 'stage'
+  | 'stage_video'
   | 'fireworks'
   | 'settings'
   | 'pause'
@@ -543,6 +544,16 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   openModal: (modal: ActiveModalType) => {
+    const current = get();
+    if (modal === 'stage_video' && current.culturalStageState.isPlayingMusic) {
+      soundEngine.stopFestiveMusic();
+      set({
+        culturalStageState: {
+          ...current.culturalStageState,
+          isPlayingMusic: false,
+        },
+      });
+    }
     set({ activeModal: modal });
   },
 

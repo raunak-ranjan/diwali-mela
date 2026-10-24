@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useGameStore } from '../stores/useGameStore';
 import { soundEngine } from '../audio/soundEngine';
+import { FERRIS_WHEEL_CONFIG, SANGEET_VIDEO_CONFIG } from '../utils/attractionConfig';
+import { interactionRegistry } from '../systems/interactionRegistry';
 
 describe('Attraction Behaviors: Ferris Wheel, Cultural Stage & Fireworks', () => {
   beforeEach(() => {
@@ -74,6 +76,19 @@ describe('Attraction Behaviors: Ferris Wheel, Cultural Stage & Fireworks', () =>
       useGameStore.getState().exitFerrisWheel();
       expect(useGameStore.getState().ferrisWheelRide.isRiding).toBe(false);
     });
+
+    it('has a noticeably faster rotation speed constant and safe reduced-motion fallback', () => {
+      expect(FERRIS_WHEEL_CONFIG.NORMAL_SPEED).toBe(0.45);
+      expect(FERRIS_WHEEL_CONFIG.NORMAL_SPEED).toBeGreaterThan(0.18);
+      expect(FERRIS_WHEEL_CONFIG.REDUCED_MOTION_SPEED).toBe(0.08);
+
+      // Verifies time for full 360 rotation (~14s for normal, ~78s for reduced motion)
+      const fullRotationTimeNormal = (Math.PI * 2) / FERRIS_WHEEL_CONFIG.NORMAL_SPEED;
+      expect(fullRotationTimeNormal).toBeCloseTo(13.96, 1);
+
+      const fullRotationTimeReduced = (Math.PI * 2) / FERRIS_WHEEL_CONFIG.REDUCED_MOTION_SPEED;
+      expect(fullRotationTimeReduced).toBeCloseTo(78.54, 1);
+    });
   });
 
   describe('2. Cultural Sangeet Stage & Concert Experience', () => {
@@ -129,6 +144,68 @@ describe('Attraction Behaviors: Ferris Wheel, Cultural Stage & Fireworks', () =>
       expect(stopSpy).not.toHaveBeenCalled();
       expect(useGameStore.getState().culturalStageState.isPlayingMusic).toBe(false);
       expect(useGameStore.getState().activeModal).toBe('none');
+    });
+
+    describe('YouTube Performance Video Player Integration', () => {
+      it('configures the supplied YouTube video ID with privacy-enhanced embed URL without autoplay', () => {
+        expect(SANGEET_VIDEO_CONFIG.VIDEO_ID).toBe('ETsmAnCfY68');
+        expect(SANGEET_VIDEO_CONFIG.EMBED_URL).toContain('www.youtube-nocookie.com/embed/ETsmAnCfY68');
+        expect(SANGEET_VIDEO_CONFIG.EMBED_URL).toContain('autoplay=0');
+        expect(SANGEET_VIDEO_CONFIG.WATCH_URL).toBe('https://www.youtube.com/watch?v=ETsmAnCfY68');
+      });
+
+      it('opens stage_video modal and pauses background festive music if playing', () => {
+        const stopSpy = vi.spyOn(soundEngine, 'stopFestiveMusic');
+        useGameStore.getState().setStagePlayingMusic(true);
+        expect(useGameStore.getState().culturalStageState.isPlayingMusic).toBe(true);
+
+        // Open video modal
+        useGameStore.getState().openModal('stage_video');
+        expect(useGameStore.getState().activeModal).toBe('stage_video');
+        expect(stopSpy).toHaveBeenCalled();
+        expect(useGameStore.getState().culturalStageState.isPlayingMusic).toBe(false);
+      });
+
+      it('closes stage_video modal cleanly and restores activeModal to none', () => {
+        useGameStore.getState().openModal('stage_video');
+        expect(useGameStore.getState().activeModal).toBe('stage_video');
+
+        useGameStore.getState().closeModal();
+        expect(useGameStore.getState().activeModal).toBe('none');
+      });
+
+      it('registers stage target with secondary Watch Cultural Performance action', () => {
+        // Manually simulate stage registration
+        interactionRegistry.register({
+          id: 'cultural_performance_stage',
+          position: [0, 1.0, 30.5],
+          radius: 4.0,
+          label: 'Diwali Cultural Sangeet Stage',
+          sublabel: 'Live Traditional Ragas & Concert Experience',
+          actionType: 'stage',
+          onInteract: () => {
+            useGameStore.getState().openModal('stage');
+          },
+          secondaryAction: {
+            label: 'Watch Cultural Performance',
+            sublabel: 'YouTube Concert Showcase',
+            keyHint: 'V',
+            onAction: () => {
+              useGameStore.getState().openModal('stage_video');
+            },
+          },
+        });
+
+        const target = interactionRegistry.get('cultural_performance_stage');
+        expect(target).toBeDefined();
+        expect(target?.secondaryAction).toBeDefined();
+        expect(target?.secondaryAction?.label).toBe('Watch Cultural Performance');
+        expect(target?.secondaryAction?.keyHint).toBe('V');
+
+        // Test triggering secondary action
+        target?.secondaryAction?.onAction();
+        expect(useGameStore.getState().activeModal).toBe('stage_video');
+      });
     });
   });
 

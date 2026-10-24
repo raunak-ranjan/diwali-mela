@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { InteractionPromptState } from '../types/game';
+import type { InteractionPromptState, InteractionPromptAction } from '../types/game';
 
 export interface InteractionTarget {
   id: string;
@@ -9,6 +9,7 @@ export interface InteractionTarget {
   sublabel?: string;
   actionType: InteractionPromptState['actionType'];
   onInteract: () => void;
+  secondaryAction?: InteractionPromptAction;
 }
 
 class InteractionRegistry {

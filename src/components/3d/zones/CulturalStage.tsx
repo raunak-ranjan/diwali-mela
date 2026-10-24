@@ -26,6 +26,14 @@ export const CulturalStage = () => {
       onInteract: () => {
         openModal('stage');
       },
+      secondaryAction: {
+        label: 'Watch Cultural Performance',
+        sublabel: 'YouTube Concert Showcase',
+        keyHint: 'V',
+        onAction: () => {
+          openModal('stage_video');
+        },
+      },
     });
 
     return () => {

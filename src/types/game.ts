@@ -83,6 +83,13 @@ export interface SaveDataV1 {
   lastSavedAt: number;
 }
 
+export interface InteractionPromptAction {
+  label: string;
+  sublabel?: string;
+  keyHint?: string;
+  onAction: () => void;
+}
+
 export interface InteractionPromptState {
   active: boolean;
   id: string;
@@ -90,4 +97,5 @@ export interface InteractionPromptState {
   sublabel?: string;
   actionType: 'shop' | 'balloon_game' | 'ring_toss' | 'rangoli' | 'diya' | 'ferris_wheel' | 'stage' | 'fireworks' | 'quest';
   position: [number, number, number];
+  secondaryAction?: InteractionPromptAction;
 }
