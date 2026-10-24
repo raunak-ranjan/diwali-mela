@@ -102,7 +102,6 @@ export type ActiveModalType =
   | 'rangoli'
   | 'finale'
   | 'stage'
-  | 'stage_video'
   | 'fireworks'
   | 'settings'
   | 'pause'
@@ -158,7 +157,9 @@ interface GameState {
     isPlayingMusic: boolean;
     activeRaag: string;
     lightingTheme: 'gold' | 'peacock' | 'saffron';
+    isScreenActive: boolean;
   };
+  setStageScreenActive: (active: boolean) => void;
   fireworksState: {
     mode: 'idle' | 'scheduled' | 'interactive';
     countdown: number;
@@ -385,6 +386,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     isPlayingMusic: false,
     activeRaag: 'Raag Yaman',
     lightingTheme: 'gold',
+    isScreenActive: false,
   },
   fireworksState: {
     mode: 'idle',
@@ -544,16 +546,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   openModal: (modal: ActiveModalType) => {
-    const current = get();
-    if (modal === 'stage_video' && current.culturalStageState.isPlayingMusic) {
-      soundEngine.stopFestiveMusic();
-      set({
-        culturalStageState: {
-          ...current.culturalStageState,
-          isPlayingMusic: false,
-        },
-      });
-    }
     set({ activeModal: modal });
   },
 
@@ -1513,6 +1505,21 @@ export const useGameStore = create<GameState>((set, get) => ({
         ...s.culturalStageState,
         lightingTheme: theme,
       },
+    }));
+  },
+
+  setStageScreenActive: (active: boolean) => {
+    const current = get();
+    if (active && current.culturalStageState.isPlayingMusic) {
+      soundEngine.stopFestiveMusic();
+    }
+    set((s) => ({
+      culturalStageState: {
+        ...s.culturalStageState,
+        isScreenActive: active,
+        isPlayingMusic: active ? false : s.culturalStageState.isPlayingMusic,
+      },
+      ...(active && s.activeModal === 'stage' ? { activeModal: 'none' } : {}),
     }));
   },
 
