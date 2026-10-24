@@ -61,6 +61,7 @@ export const DEFAULT_SAVE_DATA: SaveDataV1 = {
     musicVolume: 0.6,
     touchSensitivity: 1.0,
     reducedMotion: false,
+    ambientFireworks: true,
   },
   lastSavedAt: Date.now(),
 };

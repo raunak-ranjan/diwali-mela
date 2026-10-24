@@ -1,7 +1,7 @@
 import React from 'react';
 import { useGameStore } from '../../stores/useGameStore';
 import { useNpcStore } from '../../stores/useNpcStore';
-import { Settings, Volume2, Monitor, Trash2, X, Eye, Users } from 'lucide-react';
+import { Settings, Volume2, Monitor, Trash2, X, Eye, Users, Sparkles } from 'lucide-react';
 import type { GraphicsQuality } from '../../types/game';
 
 export const SettingsModal: React.FC = () => {
@@ -105,7 +105,7 @@ export const SettingsModal: React.FC = () => {
             />
           </div>
 
-          {/* Reduced Motion Toggle */}
+                    {/* Reduced Motion Toggle */}
           <div className="pt-2 border-t border-slate-800">
             <div className="flex items-center justify-between font-bold text-gray-300 py-1">
               <span className="flex items-center gap-1.5">
@@ -131,6 +131,35 @@ export const SettingsModal: React.FC = () => {
             </div>
             <div className="text-[10px] text-gray-400 mt-0.5">
               Softens fireworks speed and disables pendulum oscillations for visual comfort.
+            </div>
+          </div>
+
+          {/* Ambient Fireworks Toggle */}
+          <div className="pt-2 border-t border-slate-800">
+            <div className="flex items-center justify-between font-bold text-gray-300 py-1">
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-festive-gold" />
+                <span>Ambient Sky Fireworks</span>
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={settings.ambientFireworks}
+                aria-label="Ambient Sky Fireworks"
+                onClick={() => updateSettings({ ambientFireworks: !settings.ambientFireworks })}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer ${
+                  settings.ambientFireworks ? 'bg-festive-gold' : 'bg-slate-700'
+                }`}
+              >
+                <div
+                  className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                    settings.ambientFireworks ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+            <div className="text-[10px] text-gray-400 mt-0.5">
+              Periodic celebratory distant firework bursts over the royal horizon.
             </div>
           </div>
 

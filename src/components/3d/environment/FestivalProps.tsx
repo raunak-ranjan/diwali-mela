@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { useFrame } from '@react-three/fiber';
 import { useGameStore } from '../../../stores/useGameStore';
+import { windCoordinator } from '../../../systems/windCoordinator';
+import { computeGarlandSway } from '../../../systems/environmentMath';
 
 // --- 1. TRADITIONAL MARIGOLD GARLAND SWAG ---
 export const MarigoldGarland: React.FC<{
@@ -60,7 +62,10 @@ export const MarigoldGarland: React.FC<{
   useFrame(({ clock }) => {
     if (garlandRef.current && sway && !reducedMotion) {
       const t = clock.getElapsedTime();
-      garlandRef.current.rotation.x = Math.sin(t * 1.3 + start[0] * 1.2 + start[2]) * 0.024;
+      const wind = windCoordinator.update(t);
+      const [rotX, rotZ] = computeGarlandSway(t, start[0], start[2], wind, reducedMotion);
+      garlandRef.current.rotation.x = rotX;
+      garlandRef.current.rotation.z = rotZ;
     }
   });
 
@@ -370,8 +375,10 @@ export const AkashKandilLantern: React.FC<{
       const t = clock.getElapsedTime();
       // Gentle lantern pendular sway
       if (lanternRef.current) {
-        lanternRef.current.rotation.z = Math.sin(t * 1.4 + position[0] * 1.5) * 0.035;
-        lanternRef.current.rotation.x = Math.cos(t * 1.1 + position[2] * 1.5) * 0.025;
+        const wind = windCoordinator.update(t);
+        const [rotX, rotZ] = computeGarlandSway(t, position[0], position[2], wind, reducedMotion);
+        lanternRef.current.rotation.z = rotZ * 1.2;
+        lanternRef.current.rotation.x = rotX * 1.2;
       }
       // Trailing silk ribbon flutter
       if (ribbonsRef.current) {

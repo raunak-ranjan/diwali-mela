@@ -79,6 +79,7 @@ export interface SaveDataV1 {
     musicVolume: number;
     touchSensitivity: number;
     reducedMotion: boolean;
+    ambientFireworks: boolean;
   };
   lastSavedAt: number;
 }

@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { collisionSystem } from '../../../systems/collision';
 import { useGameStore } from '../../../stores/useGameStore';
+import { windCoordinator } from '../../../systems/windCoordinator';
+import { computeGarlandSway } from '../../../systems/environmentMath';
 import { MarigoldGarland, SacredKalash, AkashKandilLantern } from '../environment/FestivalProps';
 
 export const GrandEntrance: React.FC = () => {
@@ -28,9 +30,11 @@ export const GrandEntrance: React.FC = () => {
   useFrame(({ clock }) => {
     if (bellGroupRef.current && !reducedMotion) {
       const t = clock.getElapsedTime();
+      const wind = windCoordinator.update(t);
       bellGroupRef.current.children.forEach((bell, i) => {
-        bell.rotation.z = Math.sin(t * 1.5 + i * 0.9) * 0.04;
-        bell.rotation.x = Math.cos(t * 1.2 + i * 0.7) * 0.03;
+        const [rotX, rotZ] = computeGarlandSway(t, bell.position.x, bell.position.z, wind, reducedMotion);
+        bell.rotation.z = rotZ * 1.1 + Math.sin(t * 1.5 + i * 0.9) * 0.015;
+        bell.rotation.x = rotX * 1.1 + Math.cos(t * 1.2 + i * 0.7) * 0.015;
       });
     }
   });

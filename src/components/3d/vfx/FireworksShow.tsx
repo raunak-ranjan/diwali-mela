@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import { soundEngine } from '../../../audio/soundEngine';
 import { useGameStore } from '../../../stores/useGameStore';
 import { useInputStore } from '../../../stores/useInputStore';
+import { computeAmbientFireworkTarget } from '../../../systems/environmentMath';
 
 interface SparkParticle {
   active: boolean;
@@ -110,6 +111,9 @@ export const FireworksShow: React.FC<{ active?: boolean }> = ({ active: propActi
   const quality = useGameStore((s) => s.settings.graphicsQuality);
   const isTouchDevice = useInputStore((s) => s.isTouchDevice);
   const reducedMotion = useGameStore((s) => s.settings.reducedMotion);
+  const ambientFireworks = useGameStore((s) => s.settings.ambientFireworks);
+  const activeModal = useGameStore((s) => s.activeModal);
+  const lastAmbientLaunchTime = useRef(0);
 
   // Budget particles based on graphics tier and mobile capability
   const maxParticles = isTouchDevice
@@ -474,6 +478,22 @@ export const FireworksShow: React.FC<{ active?: boolean }> = ({ active: propActi
           const rx2 = -rx * 0.75;
           launchRocket(rx2, ry + 2, rz + 6, s % 2 === 0 ? 'kamuro' : 'willow', s + 3);
         }
+      }
+    }
+
+    // Ambient celebratory sky bursts in background during normal mela exploration
+    if (!isScheduledActive && ambientFireworks && !reducedMotion && activeModal === 'none') {
+      const ambientInterval = quality === 'low' ? 24.0 : 18.0;
+      if (now - lastAmbientLaunchTime.current >= ambientInterval) {
+        lastAmbientLaunchTime.current = now;
+        const target = computeAmbientFireworkTarget(Math.floor(now * 10));
+        launchRocket(
+          target.x,
+          target.y,
+          target.z,
+          target.burstType,
+          Math.floor(Math.random() * PALETTE.length)
+        );
       }
     }
 
