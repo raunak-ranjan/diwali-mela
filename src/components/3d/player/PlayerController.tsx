@@ -102,6 +102,7 @@ export const PlayerController = () => {
       if (e.code === 'KeyD' || e.code === 'ArrowRight') setKey('right', true);
 
       if (e.code === 'KeyE') {
+        if (e.repeat) return;
         const prompt = useGameStore.getState().prompt;
         if (prompt && prompt.active) {
           const nearest = interactionRegistry.findNearest(pos.current);
@@ -110,6 +111,7 @@ export const PlayerController = () => {
       }
 
       if (e.code === 'KeyV') {
+        if (e.repeat) return;
         const prompt = useGameStore.getState().prompt;
         if (prompt && prompt.active && prompt.secondaryAction) {
           prompt.secondaryAction.onAction();

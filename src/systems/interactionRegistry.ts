@@ -29,16 +29,17 @@ class InteractionRegistry {
 
   public findNearest(playerPos: THREE.Vector3): InteractionTarget | null {
     let nearest: InteractionTarget | null = null;
-    let minDistance = Infinity;
+    let minDistanceSq = Infinity;
 
     for (const target of this.targets.values()) {
       const dx = playerPos.x - target.position[0];
       const dy = playerPos.y - target.position[1];
       const dz = playerPos.z - target.position[2];
-      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      const distSq = dx * dx + dy * dy + dz * dz;
+      const radiusSq = target.radius * target.radius;
 
-      if (dist <= target.radius && dist < minDistance) {
-        minDistance = dist;
+      if (distSq <= radiusSq && distSq < minDistanceSq) {
+        minDistanceSq = distSq;
         nearest = target;
       }
     }
