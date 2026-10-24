@@ -35,6 +35,12 @@ export interface PlayerInventory {
   items: Record<string, number>;
 }
 
+export interface LeaderboardEntry {
+  score: number;
+  date: string;
+  details?: string;
+}
+
 export interface MiniGameStats {
   balloonHighScore: number;
   ringTossHighScore: number;
@@ -47,6 +53,8 @@ export interface MiniGameStats {
   dailyStreak?: number;
   dailySetsCompleted?: number;
   shrineOfferingsCount?: number;
+  balloonLeaderboard?: LeaderboardEntry[];
+  ringTossLeaderboard?: LeaderboardEntry[];
 }
 
 export interface QuestProgress {

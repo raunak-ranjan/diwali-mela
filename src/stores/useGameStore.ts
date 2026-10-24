@@ -13,6 +13,13 @@ import { saveRepository } from '../systems/saveRepository';
 import { interactionRegistry } from '../systems/interactionRegistry';
 import { soundEngine } from '../audio/soundEngine';
 import { useInputStore } from './useInputStore';
+import {
+  validateTokenCredit,
+  validateTokenDebit,
+  calculateBalloonReward,
+  recordPersonalBest,
+  isConsumableItem,
+} from '../systems/economyLogic';
 
 export const SHOP_CATALOG: ShopItem[] = [
   {
@@ -85,6 +92,36 @@ export const SHOP_CATALOG: ShopItem[] = [
     icon: '🏮',
     blessing: 'May beacon lights guide auspicious fortune to your doorstep!',
   },
+  {
+    id: 'samosa_plate',
+    name: 'Crispy Samosa Plate',
+    hindiName: 'खस्ता समोसा',
+    category: 'snack',
+    price: 15,
+    description: 'Hot triangular flaky pastries stuffed with spiced potatoes, peas, and roasted cumin.',
+    icon: '🥟',
+    blessing: 'May every crunch bring warmth, hospitality, and festival cheer!',
+  },
+  {
+    id: 'masala_chai',
+    name: 'Kulhad Masala Chai',
+    hindiName: 'कुल्हड़ मसाला चाय',
+    category: 'snack',
+    price: 8,
+    description: 'Aromatic earthen clay cup brewed with fresh ginger, crushed cardamom, and cinnamon.',
+    icon: '☕',
+    blessing: 'May your days be energized with hearty warmth and good health!',
+  },
+  {
+    id: 'pani_puri',
+    name: 'Tangy Pani Puri Set',
+    hindiName: 'तीखी पानी पूरी',
+    category: 'snack',
+    price: 18,
+    description: 'Crisp semolina hollow puris filled with spiced potato and chilled mint-tamarind jaljeera.',
+    icon: '🥣',
+    blessing: 'May your celebrations be brimming with zest, laughter, and tang!',
+  },
 ];
 
 export const MAX_RING_TOSS_RINGS = 5;
@@ -121,6 +158,7 @@ interface GameState {
   tokenHistory: TokenTransaction[];
   recentTokenDelta: { amount: number; id: string } | null;
   activeModal: ActiveModalType;
+  activeShopCategory: 'all' | 'sweet' | 'snack' | 'diya' | 'handicraft';
   prompt: InteractionPromptState | null;
   quest: {
     id: string;
@@ -185,6 +223,7 @@ interface GameState {
   setPrompt: (prompt: InteractionPromptState | null) => void;
   openModal: (modal: ActiveModalType) => void;
   closeModal: () => void;
+  openShopWithCategory: (category: 'all' | 'sweet' | 'snack' | 'diya' | 'handicraft') => void;
   addTokens: (amount: number, source?: string) => void;
   purchaseItem: (itemId: string) => boolean;
   consumeInventoryItem: (itemId: string) => { success: boolean; message: string };
@@ -376,6 +415,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   ],
   recentTokenDelta: null,
   activeModal: 'welcome',
+  activeShopCategory: 'all',
   prompt: null,
   quest: {
     id: 'five_sacred_diyas',
@@ -584,6 +624,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ activeModal: modal });
   },
 
+  openShopWithCategory: (category) => {
+    set({ activeShopCategory: category, activeModal: 'shop' });
+  },
+
   closeModal: () => {
     const current = get();
     if (current.culturalStageState.isPlayingMusic) {
@@ -609,18 +653,21 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   addTokens: (amount: number, source: string = 'Festival Activity') => {
-    if (typeof amount !== 'number' || amount <= 0 || isNaN(amount)) return;
     const current = get();
-    const newTokens = current.tokens + amount;
+    const validated = validateTokenCredit(current.tokens, amount);
+    if (!validated.valid) return;
+
+    const newTokens = validated.newBalance;
+    const roundedAmount = Math.floor(amount);
     const newStats: MiniGameStats = {
       ...current.stats,
-      totalTokensEarned: (current.stats?.totalTokensEarned ?? current.tokens) + amount,
+      totalTokensEarned: (current.stats?.totalTokensEarned ?? current.tokens) + roundedAmount,
     };
     const updatedHistory: TokenTransaction[] = [
       ...current.tokenHistory,
       {
         id: `tx_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-        amount,
+        amount: roundedAmount,
         source,
         timestamp: Date.now(),
       },
@@ -631,7 +678,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       tokens: newTokens,
       stats: newStats,
       tokenHistory: updatedHistory,
-      recentTokenDelta: { amount, id: String(Date.now()) },
+      recentTokenDelta: { amount: roundedAmount, id: String(Date.now()) },
     });
     persistState(get());
   },
@@ -641,9 +688,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!item) return false;
 
     const current = get();
-    if (current.tokens < item.price) return false;
+    const validated = validateTokenDebit(current.tokens, item.price);
+    if (!validated.valid) {
+      soundEngine.playErrorSound();
+      return false;
+    }
 
-    const updatedTokens = current.tokens - item.price;
+    const updatedTokens = validated.newBalance;
     const updatedInventory = {
       ...current.inventory,
       [itemId]: (current.inventory[itemId] || 0) + 1,
@@ -687,9 +738,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const current = get();
     const item = SHOP_CATALOG.find((i) => i.id === itemId);
 
-    // Only allow known sweets
-    const validSweets = ['gulab_jamun', 'kaju_katli', 'jalebi', 'motichoor_laddoo'];
-    if (!item || !validSweets.includes(itemId)) {
+    if (!item || !isConsumableItem(itemId)) {
       return { success: false, message: 'Only festival sweets can be consumed.' };
     }
 
@@ -1308,14 +1357,24 @@ export const useGameStore = create<GameState>((set, get) => ({
     // Guard against duplicate mini-game completion events!
     if (!current.balloonGame.isPlaying) return;
 
-    const rewardTokens = Math.max(10, Math.floor(current.balloonGame.score / 2));
+    const score = current.balloonGame.score;
+    const rewardTokens = calculateBalloonReward(score);
     soundEngine.playTokenEarned();
 
     const newTokens = current.tokens + rewardTokens;
-    const newHighScore = Math.max(current.balloonGame.highScore, current.balloonGame.score);
+    const { entries: updatedLeaderboard, isNewRecord } = recordPersonalBest(
+      current.stats?.balloonLeaderboard || [],
+      score
+    );
+    const newHighScore = Math.max(current.balloonGame.highScore, score);
+    if (isNewRecord && score > 0) {
+      soundEngine.playQuestComplete();
+    }
+
     const updatedStats: MiniGameStats = {
       ...current.stats,
       balloonHighScore: newHighScore,
+      balloonLeaderboard: updatedLeaderboard,
       totalTokensEarned: (current.stats?.totalTokensEarned ?? current.tokens) + rewardTokens,
     };
     const updatedHistory: TokenTransaction[] = [
@@ -1428,10 +1487,19 @@ export const useGameStore = create<GameState>((set, get) => ({
     const rewardTokens = calculateRingTossReward(score);
 
     const newTokens = current.tokens + rewardTokens;
+    const { entries: updatedLeaderboard, isNewRecord } = recordPersonalBest(
+      current.stats?.ringTossLeaderboard || [],
+      score
+    );
     const newHighScore = Math.max(current.ringTossGame.highScore, score);
+    if (isNewRecord && score > 0) {
+      soundEngine.playQuestComplete();
+    }
+
     const updatedStats: MiniGameStats = {
       ...current.stats,
       ringTossHighScore: newHighScore,
+      ringTossLeaderboard: updatedLeaderboard,
       totalTokensEarned: (current.stats?.totalTokensEarned ?? current.tokens) + rewardTokens,
     };
 
