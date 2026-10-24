@@ -21,6 +21,7 @@ import { RewardsProgressionModal } from './components/ui/RewardsProgressionModal
 import { FestivalPouchModal } from './components/ui/FestivalPouchModal';
 import { TutorialModal } from './components/ui/TutorialModal';
 import { VendorGreetingBanner } from './components/ui/VendorGreetingBanner';
+import { VisitorDialogueModal } from './components/ui/VisitorDialogueModal';
 import { DevPerformanceTracker, DevPerformanceOverlay } from './components/dev/DevPerformanceTelemetry';
 import { useGameStore } from './stores/useGameStore';
 import { useInputStore } from './stores/useInputStore';
@@ -111,6 +112,7 @@ export function App() {
       <PauseMenu />
       <RewardsProgressionModal />
       <FestivalPouchModal />
+      <VisitorDialogueModal />
     </div>
   );
 }
