@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useGameStore } from '../stores/useGameStore';
 import { soundEngine } from '../audio/soundEngine';
+import { FERRIS_WHEEL_CONFIG, SANGEET_VIDEO_CONFIG } from '../utils/attractionConfig';
+import { interactionRegistry } from '../systems/interactionRegistry';
 
 describe('Attraction Behaviors: Ferris Wheel, Cultural Stage & Fireworks', () => {
   beforeEach(() => {
@@ -17,6 +19,7 @@ describe('Attraction Behaviors: Ferris Wheel, Cultural Stage & Fireworks', () =>
         isPlayingMusic: false,
         activeRaag: 'Raag Yaman',
         lightingTheme: 'gold',
+        isScreenActive: false,
       },
       fireworksState: {
         mode: 'idle',
@@ -74,6 +77,19 @@ describe('Attraction Behaviors: Ferris Wheel, Cultural Stage & Fireworks', () =>
       useGameStore.getState().exitFerrisWheel();
       expect(useGameStore.getState().ferrisWheelRide.isRiding).toBe(false);
     });
+
+    it('has a noticeably faster rotation speed constant (~11.4s per rev) and safe reduced-motion fallback', () => {
+      expect(FERRIS_WHEEL_CONFIG.NORMAL_SPEED).toBe(0.55);
+      expect(FERRIS_WHEEL_CONFIG.NORMAL_SPEED).toBeGreaterThan(0.45);
+      expect(FERRIS_WHEEL_CONFIG.REDUCED_MOTION_SPEED).toBe(0.08);
+
+      // Verifies time for full 360 rotation (~11.4s for normal, ~78.5s for reduced motion)
+      const fullRotationTimeNormal = (Math.PI * 2) / FERRIS_WHEEL_CONFIG.NORMAL_SPEED;
+      expect(fullRotationTimeNormal).toBeCloseTo(11.42, 1);
+
+      const fullRotationTimeReduced = (Math.PI * 2) / FERRIS_WHEEL_CONFIG.REDUCED_MOTION_SPEED;
+      expect(fullRotationTimeReduced).toBeCloseTo(78.54, 1);
+    });
   });
 
   describe('2. Cultural Sangeet Stage & Concert Experience', () => {
@@ -129,6 +145,74 @@ describe('Attraction Behaviors: Ferris Wheel, Cultural Stage & Fireworks', () =>
       expect(stopSpy).not.toHaveBeenCalled();
       expect(useGameStore.getState().culturalStageState.isPlayingMusic).toBe(false);
       expect(useGameStore.getState().activeModal).toBe('none');
+    });
+
+    describe('3D Stage Screen YouTube Performance Integration', () => {
+      it('configures the supplied YouTube video ID with privacy-enhanced embed URL without autoplay', () => {
+        expect(SANGEET_VIDEO_CONFIG.VIDEO_ID).toBe('ETsmAnCfY68');
+        expect(SANGEET_VIDEO_CONFIG.EMBED_URL).toContain('www.youtube-nocookie.com/embed/ETsmAnCfY68');
+        expect(SANGEET_VIDEO_CONFIG.EMBED_URL).toContain('autoplay=0');
+        expect(SANGEET_VIDEO_CONFIG.EMBED_URL).toContain('playsinline=1');
+        expect(SANGEET_VIDEO_CONFIG.EMBED_URL).toContain('rel=0');
+        expect(SANGEET_VIDEO_CONFIG.WATCH_URL).toBe('https://www.youtube.com/watch?v=ETsmAnCfY68');
+        expect(SANGEET_VIDEO_CONFIG.STAGE_SCREEN.WIDTH).toBe(9.6);
+        expect(SANGEET_VIDEO_CONFIG.STAGE_SCREEN.HEIGHT).toBe(5.4);
+        expect(SANGEET_VIDEO_CONFIG.STAGE_SCREEN.PIXEL_WIDTH).toBe(960);
+        expect(SANGEET_VIDEO_CONFIG.STAGE_SCREEN.PIXEL_HEIGHT).toBe(540);
+        expect(SANGEET_VIDEO_CONFIG.STAGE_SCREEN.DISTANCE_FACTOR).toBe(4.0);
+      });
+
+      it('activates 3D stage screen and pauses background festive music if playing', () => {
+        const stopSpy = vi.spyOn(soundEngine, 'stopFestiveMusic');
+        useGameStore.getState().setStagePlayingMusic(true);
+        expect(useGameStore.getState().culturalStageState.isPlayingMusic).toBe(true);
+
+        // Activate in-world stage screen
+        useGameStore.getState().setStageScreenActive(true);
+        expect(useGameStore.getState().culturalStageState.isScreenActive).toBe(true);
+        expect(stopSpy).toHaveBeenCalled();
+        expect(useGameStore.getState().culturalStageState.isPlayingMusic).toBe(false);
+      });
+
+      it('deactivates 3D stage screen cleanly and restores normal game state', () => {
+        useGameStore.getState().setStageScreenActive(true);
+        expect(useGameStore.getState().culturalStageState.isScreenActive).toBe(true);
+
+        useGameStore.getState().setStageScreenActive(false);
+        expect(useGameStore.getState().culturalStageState.isScreenActive).toBe(false);
+      });
+
+      it('registers stage target with secondary Watch Performance on Stage Screen action', () => {
+        interactionRegistry.register({
+          id: 'cultural_performance_stage',
+          position: [0, 1.0, 30.5],
+          radius: 4.0,
+          label: 'Diwali Cultural Sangeet Stage',
+          sublabel: 'Live Traditional Ragas & Concert Experience',
+          actionType: 'stage',
+          onInteract: () => {
+            useGameStore.getState().openModal('stage');
+          },
+          secondaryAction: {
+            label: 'Watch Performance on Stage Screen',
+            sublabel: 'Play Live YouTube Video in 3D Mela',
+            keyHint: 'V',
+            onAction: () => {
+              useGameStore.getState().setStageScreenActive(true);
+            },
+          },
+        });
+
+        const target = interactionRegistry.get('cultural_performance_stage');
+        expect(target).toBeDefined();
+        expect(target?.secondaryAction).toBeDefined();
+        expect(target?.secondaryAction?.label).toBe('Watch Performance on Stage Screen');
+        expect(target?.secondaryAction?.keyHint).toBe('V');
+
+        // Test triggering secondary action activates stage screen directly
+        target?.secondaryAction?.onAction();
+        expect(useGameStore.getState().culturalStageState.isScreenActive).toBe(true);
+      });
     });
   });
 

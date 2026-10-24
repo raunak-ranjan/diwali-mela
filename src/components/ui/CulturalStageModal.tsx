@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react';
 import { useGameStore } from '../../stores/useGameStore';
 import { soundEngine } from '../../audio/soundEngine';
-import { Music, Play, Pause, Sparkles, X, Sun, Palette } from 'lucide-react';
+import { Music, Play, Pause, Sparkles, X, Sun, Palette, Video } from 'lucide-react';
 
 export const CulturalStageModal: React.FC = () => {
   const activeModal = useGameStore((s) => s.activeModal);
+  const setStageScreenActive = useGameStore((s) => s.setStageScreenActive);
   const closeModal = useGameStore((s) => s.closeModal);
   const isPlayingMusic = useGameStore((s) => s.culturalStageState.isPlayingMusic);
   const activeRaag = useGameStore((s) => s.culturalStageState.activeRaag);
@@ -201,6 +202,34 @@ export const CulturalStageModal: React.FC = () => {
             className="py-1.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-200 font-bold text-xs flex items-center gap-1.5 border border-amber-500/30 cursor-pointer active:scale-95 transition-all"
           >
             <span>👏 Applaud</span>
+          </button>
+        </div>
+
+        {/* Watch Performance on Stage Screen Banner */}
+        <div className="my-2.5 p-3 rounded-2xl bg-gradient-to-r from-red-950/60 via-slate-900/80 to-amber-950/60 border border-festive-gold/60 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-red-600 to-amber-500 flex items-center justify-center text-white shadow shrink-0">
+              <Video className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-festive-gold flex items-center gap-1.5">
+                <span>Watch Performance on Stage Screen</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-600/90 text-white font-semibold">3D Screen</span>
+              </div>
+              <div className="text-[11px] text-amber-100/80">
+                Play live YouTube performance directly on the 3D stage LED display
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            data-testid="stage-watch-video-btn"
+            onClick={() => setStageScreenActive(true)}
+            className="w-full sm:w-auto py-2 px-3.5 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow active:scale-95 transition-all cursor-pointer"
+          >
+            <Play className="w-3.5 h-3.5 fill-current" />
+            <span>Play on Stage Screen</span>
           </button>
         </div>
 

@@ -105,6 +105,13 @@ export const PlayerController = () => {
         }
       }
 
+      if (e.code === 'KeyV') {
+        const prompt = useGameStore.getState().prompt;
+        if (prompt && prompt.active && prompt.secondaryAction) {
+          prompt.secondaryAction.onAction();
+        }
+      }
+
       if (e.code === 'KeyI' || e.code === 'KeyB') {
         openModal('inventory');
       }
@@ -325,6 +332,7 @@ export const PlayerController = () => {
         sublabel: nearest.sublabel,
         actionType: nearest.actionType,
         position: nearest.position,
+        secondaryAction: nearest.secondaryAction,
       });
     } else {
       setPrompt(null);

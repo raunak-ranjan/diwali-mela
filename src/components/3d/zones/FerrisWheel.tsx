@@ -5,6 +5,8 @@ import { interactionRegistry } from '../../../systems/interactionRegistry';
 import { collisionSystem } from '../../../systems/collision';
 import { useGameStore } from '../../../stores/useGameStore';
 
+import { FERRIS_WHEEL_CONFIG } from '../../../utils/attractionConfig';
+
 export const FerrisWheel: React.FC = () => {
   const wheelRef = useRef<THREE.Group>(null);
   const cabinsRef = useRef<(THREE.Group | null)[]>([]);
@@ -41,7 +43,9 @@ export const FerrisWheel: React.FC = () => {
   useFrame(({ clock }, delta) => {
     if (wheelRef.current) {
       const safeDelta = Math.min(delta, 0.05);
-      const speed = reducedMotion ? 0.04 : 0.18;
+      const speed = reducedMotion
+        ? FERRIS_WHEEL_CONFIG.REDUCED_MOTION_SPEED
+        : FERRIS_WHEEL_CONFIG.NORMAL_SPEED;
       wheelRef.current.rotation.z += safeDelta * speed;
       const currentAngle = wheelRef.current.rotation.z;
       if (useGameStore.getState().ferrisWheelRide.isRiding) {
