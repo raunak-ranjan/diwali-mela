@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { CrowdDensity } from '../types/npc';
+import { npcCoordinator } from '../systems/npcCoordinator';
 
 export interface VendorGreetingState {
   vendorId: string;
@@ -41,6 +42,9 @@ if (typeof window !== 'undefined') {
   };
   (window as any).__getActiveVendorGreeting = () => {
     return useNpcStore.getState().activeGreeting;
+  };
+  (window as any).__getMelaQueue = (queueId: string) => {
+    return npcCoordinator.getQueue(queueId);
   };
   window.addEventListener('test-set-greeting', (e: any) => {
     if (e.detail) {
