@@ -38,6 +38,9 @@ export const RingTossUI: React.FC = () => {
   const tickRingTossGame = useGameStore((s) => s.tickRingTossGame);
   const cancelRingTossGame = useGameStore((s) => s.cancelRingTossGame);
   const reducedMotion = useGameStore((s) => s.settings.reducedMotion);
+  const EMPTY_LEADERBOARD: any[] = [];
+  const rawLeaderboard = useGameStore((s) => s.stats.ringTossLeaderboard);
+  const leaderboard = rawLeaderboard || EMPTY_LEADERBOARD;
 
   // Phase derived purely from authoritative game store state
   const phase: 'ready' | 'playing' | 'finished' =
@@ -432,12 +435,24 @@ export const RingTossUI: React.FC = () => {
                   {ringTossGame.highScore} pts
                 </span>
               </div>
-              <div className="flex justify-between items-center text-sm pt-1">
+                            <div className="flex justify-between items-center text-sm pt-1">
                 <span className="font-bold text-festive-saffron">Tokens Earned:</span>
                 <span data-testid="ring-toss-reward-tokens" className="font-mono text-lg font-black text-festive-gold flex items-center gap-1">
                   +{rewardTokens} 🪙
                 </span>
               </div>
+              {leaderboard.length > 0 && (
+                <div className="mt-1 pt-2 border-t border-slate-800 text-[10px] text-gray-400">
+                  <span className="font-bold text-gray-300">Top Records:</span>
+                  <div className="flex justify-center gap-2 mt-1">
+                    {leaderboard.map((entry, idx) => (
+                      <span key={idx} className="bg-slate-800 px-2 py-0.5 rounded-full font-mono text-amber-300">
+                        #{idx + 1}: {entry.score} pts
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 mt-4 w-full">

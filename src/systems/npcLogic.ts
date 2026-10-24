@@ -275,6 +275,14 @@ export function leaveQueue(queue: MelaQueueState, npcId: string): MelaQueueState
 
 // ── Simulation State & Autonomous Advancement ────────────────────────────────
 
+export interface EnvironmentContext {
+  isStageActive?: boolean;
+  stageFocusPoint?: Waypoint;
+  isFireworksActive?: boolean;
+  playerPos?: [number, number, number];
+  playerNearbyRadius?: number;
+}
+
 export interface NpcSimulationState {
   position: [number, number, number];
   waypointIndex: number;
@@ -286,6 +294,12 @@ export interface NpcSimulationState {
   queueSlotIndex?: number;
   serviceTimer?: number;
   watchingTimer?: number;
+  // Living World Phase 7 extensions
+  stuckTimer?: number;
+  lastPosition?: [number, number, number];
+  routineIndex?: number;
+  reactionState?: 'normal' | 'watching_stage' | 'cheering' | 'greeting_player';
+  reactionTimer?: number;
 }
 
 export interface AutonomousNpcOptions {
@@ -293,6 +307,69 @@ export interface AutonomousNpcOptions {
   personalSpace?: number;
   obstacles?: BoundingBox2D[];
   currentQueue?: MelaQueueState | null;
+  environment?: EnvironmentContext;
+}
+
+/**
+ * Checks whether an NPC is physically stuck against an obstacle or crowd congestion.
+ */
+export function checkAndResolveStuck(
+  currentPos: [number, number, number],
+  lastPos: [number, number, number] | undefined,
+  stuckTimer: number,
+  deltaSeconds: number,
+  stuckThresholdDistance: number = 0.08,
+  stuckTimeout: number = 2.5
+): { isStuck: boolean; newStuckTimer: number } {
+  if (!lastPos) {
+    return { isStuck: false, newStuckTimer: 0 };
+  }
+  const dist = getDistance2D(currentPos, lastPos);
+  const updatedTimer = dist < stuckThresholdDistance ? stuckTimer + deltaSeconds : 0;
+  return {
+    isStuck: updatedTimer >= stuckTimeout,
+    newStuckTimer: updatedTimer,
+  };
+}
+
+/**
+ * Evaluates context-appropriate spectator orientation (stage performance vs nearby player).
+ */
+export function evaluateSpectatorOrientation(
+  npcPos: [number, number, number],
+  isStageActive: boolean,
+  watchFocusPoint?: Waypoint,
+  playerPos?: [number, number, number]
+): number | null {
+  if (isStageActive && watchFocusPoint) {
+    return getAngleTowards(npcPos, watchFocusPoint);
+  }
+  if (playerPos) {
+    const distToPlayer = getDistance2D(npcPos, playerPos);
+    if (distToPlayer <= 2.8) {
+      return getAngleTowards(npcPos, playerPos);
+    }
+  }
+  return null;
+}
+
+/**
+ * Selects an authentic contextual visitor dialogue line.
+ */
+export function selectVisitorDialogue(
+  config: AmbientVisitorConfig,
+  interactionCount: number = 0
+) {
+  if (!config.dialogues || config.dialogues.length === 0) {
+    return {
+      greeting: `Namaste! I am ${config.name}, enjoying the Diwali Mela!`,
+      greetingHindi: 'नमस्ते! मेले का आनंद लें।',
+      festivalTip: 'Explore every festive corner to find glowing lamps and sweets!',
+      currentThought: 'The festival lights are so uplifting tonight.',
+    };
+  }
+  const idx = Math.abs(interactionCount) % config.dialogues.length;
+  return config.dialogues[idx];
 }
 
 /**
@@ -476,10 +553,14 @@ export function advanceAutonomousNpc(
       };
     }
 
-    // Face the spectacle focus point if provided
+    // Face stage performance if active, or spectacle focus point, or nearby player
     let watchYaw = currentState.yaw;
-    if (config.watchFocusPoint) {
+    if (options.environment?.isStageActive && (options.environment.stageFocusPoint || config.watchFocusPoint)) {
+      watchYaw = getAngleTowards(currentState.position, options.environment.stageFocusPoint || config.watchFocusPoint!);
+    } else if (config.watchFocusPoint) {
       watchYaw = getAngleTowards(currentState.position, config.watchFocusPoint);
+    } else if (options.environment?.playerPos && getDistance2D(currentState.position, options.environment.playerPos) <= 2.8) {
+      watchYaw = getAngleTowards(currentState.position, options.environment.playerPos);
     }
 
     return {
@@ -522,10 +603,17 @@ export function advanceAutonomousNpc(
       };
     }
 
+    // Acknowledge player presence if nearby while pausing
+    let pauseYaw = currentState.yaw;
+    if (options.environment?.playerPos && getDistance2D(currentState.position, options.environment.playerPos) <= 2.8) {
+      pauseYaw = getAngleTowards(currentState.position, options.environment.playerPos);
+    }
+
     return {
       nextState: {
         ...currentState,
         pauseTimer: newTimer,
+        yaw: pauseYaw,
       },
     };
   }
@@ -554,6 +642,23 @@ export function advanceAutonomousNpc(
     };
   }
 
+  // Anti-stuck detection: if NPC is caught on geometry or congestion, advance waypoint
+  const lastPos = currentState.lastPosition || currentState.position;
+  const stuckResult = checkAndResolveStuck(currentState.position, lastPos, currentState.stuckTimer || 0, deltaSeconds);
+  if (stuckResult.isStuck) {
+    const nextIdx = getNextWaypointIndex(currentState.waypointIndex, waypoints.length, true);
+    const nextWp = waypoints[nextIdx] || [0, 0, 0];
+    return {
+      nextState: {
+        ...currentState,
+        waypointIndex: nextIdx,
+        stuckTimer: 0,
+        lastPosition: currentState.position,
+        yaw: getAngleTowards(currentState.position, nextWp),
+      },
+    };
+  }
+
   // Step with pedestrian avoidance and obstacle sliding
   const stepDist = speed * deltaSeconds;
   const stepped = stepWithAvoidance(
@@ -576,6 +681,8 @@ export function advanceAutonomousNpc(
       position: resolved,
       state: 'walking',
       yaw: targetYaw,
+      lastPosition: currentState.position,
+      stuckTimer: stuckResult.newStuckTimer,
     },
   };
 }

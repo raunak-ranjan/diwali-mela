@@ -1,3 +1,12 @@
+import {
+  createDefaultMissionJournal,
+  recordMissionAction,
+  validateMissionClaim,
+  validateCollectiblePickup,
+  evaluateAchievements,
+  validateAchievementClaim,
+} from '../systems/progressionLogic';
+import type { MissionJournalSaveState } from '../types/missions';
 import { create } from 'zustand';
 import type { GameZone, InteractionPromptState, ShopItem, GraphicsQuality, MiniGameStats, QuestNotification } from '../types/game';
 import { KNOWN_COSMETICS, type PlayerCosmetics, type TokenTransaction } from '../types/rewards';
@@ -13,6 +22,13 @@ import { saveRepository } from '../systems/saveRepository';
 import { interactionRegistry } from '../systems/interactionRegistry';
 import { soundEngine } from '../audio/soundEngine';
 import { useInputStore } from './useInputStore';
+import {
+  validateTokenCredit,
+  validateTokenDebit,
+  calculateBalloonReward,
+  recordPersonalBest,
+  isConsumableItem,
+} from '../systems/economyLogic';
 
 export const SHOP_CATALOG: ShopItem[] = [
   {
@@ -85,6 +101,36 @@ export const SHOP_CATALOG: ShopItem[] = [
     icon: '🏮',
     blessing: 'May beacon lights guide auspicious fortune to your doorstep!',
   },
+  {
+    id: 'samosa_plate',
+    name: 'Crispy Samosa Plate',
+    hindiName: 'खस्ता समोसा',
+    category: 'snack',
+    price: 15,
+    description: 'Hot triangular flaky pastries stuffed with spiced potatoes, peas, and roasted cumin.',
+    icon: '🥟',
+    blessing: 'May every crunch bring warmth, hospitality, and festival cheer!',
+  },
+  {
+    id: 'masala_chai',
+    name: 'Kulhad Masala Chai',
+    hindiName: 'कुल्हड़ मसाला चाय',
+    category: 'snack',
+    price: 8,
+    description: 'Aromatic earthen clay cup brewed with fresh ginger, crushed cardamom, and cinnamon.',
+    icon: '☕',
+    blessing: 'May your days be energized with hearty warmth and good health!',
+  },
+  {
+    id: 'pani_puri',
+    name: 'Tangy Pani Puri Set',
+    hindiName: 'तीखी पानी पूरी',
+    category: 'snack',
+    price: 18,
+    description: 'Crisp semolina hollow puris filled with spiced potato and chilled mint-tamarind jaljeera.',
+    icon: '🥣',
+    blessing: 'May your celebrations be brimming with zest, laughter, and tang!',
+  },
 ];
 
 export const MAX_RING_TOSS_RINGS = 5;
@@ -107,7 +153,9 @@ export type ActiveModalType =
   | 'settings'
   | 'pause'
   | 'rewards'
-  | 'inventory';
+  | 'inventory'
+  | 'tutorial'
+  | 'dialogue';
 
 interface GameState {
   isLoaded: boolean;
@@ -118,9 +166,13 @@ interface GameState {
   litDiyas: string[];
   stats: MiniGameStats;
   cosmetics: PlayerCosmetics;
+  tutorialCompleted: boolean;
+  setTutorialCompleted: (completed: boolean) => void;
+  openTutorial: () => void;
   tokenHistory: TokenTransaction[];
   recentTokenDelta: { amount: number; id: string } | null;
   activeModal: ActiveModalType;
+  activeShopCategory: 'all' | 'sweet' | 'snack' | 'diya' | 'handicraft';
   prompt: InteractionPromptState | null;
   quest: {
     id: string;
@@ -148,6 +200,16 @@ interface GameState {
     highScore: number;
     hitsCount: number;
   };
+  collectibles: string[];
+  achievements: string[];
+  claimedAchievements: string[];
+  missions: MissionJournalSaveState;
+  discoverCollectible: (collectibleId: string) => boolean;
+  advanceMission: (actionId: string, amount?: number) => void;
+  claimMissionReward: (missionId: string) => boolean;
+  claimAchievementReward: (achievementId: string) => boolean;
+  checkAchievements: () => void;
+
   // Attractions: Ferris Wheel, Cultural Stage & Fireworks
   ferrisWheelRide: {
     isRiding: boolean;
@@ -176,6 +238,7 @@ interface GameState {
     musicVolume: number;
     touchSensitivity: number;
     reducedMotion: boolean;
+    ambientFireworks: boolean;
   };
   // Actions
   initializeSave: () => Promise<void>;
@@ -184,6 +247,7 @@ interface GameState {
   setPrompt: (prompt: InteractionPromptState | null) => void;
   openModal: (modal: ActiveModalType) => void;
   closeModal: () => void;
+  openShopWithCategory: (category: 'all' | 'sweet' | 'snack' | 'diya' | 'handicraft') => void;
   addTokens: (amount: number, source?: string) => void;
   purchaseItem: (itemId: string) => boolean;
   consumeInventoryItem: (itemId: string) => { success: boolean; message: string };
@@ -246,6 +310,11 @@ export const flushPendingPersist = () => {
       isCompleted: current.quest.isCompleted,
     },
     cosmetics: current.cosmetics,
+    collectibles: current.collectibles,
+    achievements: current.achievements,
+    claimedAchievements: current.claimedAchievements,
+    missions: current.missions,
+    tutorialCompleted: current.tutorialCompleted,
     tokenHistory: current.tokenHistory,
     dailyDarshan: {
       date: current.dailyDarshan.date,
@@ -360,6 +429,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     fireworksWatchedCount: 0,
     magicalDiyasCollected: 0,
     questCompleted: false,
+    balloonLeaderboard: [],
+    ringTossLeaderboard: [],
   },
   cosmetics: {
     unlocked: [],
@@ -375,6 +446,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   ],
   recentTokenDelta: null,
   activeModal: 'welcome',
+  activeShopCategory: 'all',
+  collectibles: [],
+  achievements: [],
+  claimedAchievements: [],
+  missions: createDefaultMissionJournal(),
+  tutorialCompleted: false,
   prompt: null,
   quest: {
     id: 'five_sacred_diyas',
@@ -436,6 +513,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     musicVolume: 0.6,
     touchSensitivity: 1.0,
     reducedMotion: false,
+    ambientFireworks: true,
   },
 
   initializeSave: async () => {
@@ -502,6 +580,11 @@ export const useGameStore = create<GameState>((set, get) => ({
         litDiyas: data.litDiyas,
         stats: data.stats,
         cosmetics: data.cosmetics || { unlocked: [], equipped: null },
+        collectibles: data.collectibles || [],
+        achievements: data.achievements || [],
+        claimedAchievements: data.claimedAchievements || [],
+        missions: data.missions || createDefaultMissionJournal(),
+        tutorialCompleted: Boolean(data.tutorialCompleted),
         tokenHistory: data.tokenHistory && data.tokenHistory.length > 0
           ? data.tokenHistory
           : [
@@ -553,7 +636,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ gameStarted: true, activeModal: 'none' });
   },
 
-  setCurrentZone: (zone: GameZone) => {
+    setCurrentZone: (zone: GameZone) => {
+    get().advanceMission('visit_' + zone);
     if (get().currentZone === zone) return;
     set({ currentZone: zone });
   },
@@ -582,6 +666,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ activeModal: modal });
   },
 
+  openShopWithCategory: (category) => {
+    set({ activeShopCategory: category, activeModal: 'shop' });
+  },
+
   closeModal: () => {
     const current = get();
     if (current.culturalStageState.isPlayingMusic) {
@@ -607,18 +695,21 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   addTokens: (amount: number, source: string = 'Festival Activity') => {
-    if (typeof amount !== 'number' || amount <= 0 || isNaN(amount)) return;
     const current = get();
-    const newTokens = current.tokens + amount;
+    const validated = validateTokenCredit(current.tokens, amount);
+    if (!validated.valid) return;
+
+    const newTokens = validated.newBalance;
+    const roundedAmount = Math.floor(amount);
     const newStats: MiniGameStats = {
       ...current.stats,
-      totalTokensEarned: (current.stats?.totalTokensEarned ?? current.tokens) + amount,
+      totalTokensEarned: (current.stats?.totalTokensEarned ?? current.tokens) + roundedAmount,
     };
     const updatedHistory: TokenTransaction[] = [
       ...current.tokenHistory,
       {
         id: `tx_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-        amount,
+        amount: roundedAmount,
         source,
         timestamp: Date.now(),
       },
@@ -629,7 +720,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       tokens: newTokens,
       stats: newStats,
       tokenHistory: updatedHistory,
-      recentTokenDelta: { amount, id: String(Date.now()) },
+      recentTokenDelta: { amount: roundedAmount, id: String(Date.now()) },
     });
     persistState(get());
   },
@@ -639,9 +730,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!item) return false;
 
     const current = get();
-    if (current.tokens < item.price) return false;
+    const validated = validateTokenDebit(current.tokens, item.price);
+    if (!validated.valid) {
+      soundEngine.playErrorSound();
+      return false;
+    }
 
-    const updatedTokens = current.tokens - item.price;
+    const updatedTokens = validated.newBalance;
     const updatedInventory = {
       ...current.inventory,
       [itemId]: (current.inventory[itemId] || 0) + 1,
@@ -685,9 +780,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const current = get();
     const item = SHOP_CATALOG.find((i) => i.id === itemId);
 
-    // Only allow known sweets
-    const validSweets = ['gulab_jamun', 'kaju_katli', 'jalebi', 'motichoor_laddoo'];
-    if (!item || !validSweets.includes(itemId)) {
+    if (!item || !isConsumableItem(itemId)) {
       return { success: false, message: 'Only festival sweets can be consumed.' };
     }
 
@@ -916,6 +1009,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         : current.questNotification,
     });
     persistState(get());
+    get().advanceMission('kindle_diya');
+    get().checkAchievements();
   },
 
   completeRangoli: () => {
@@ -1051,6 +1146,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     persistState(get());
+    get().advanceMission('kindle_diya');
+    get().checkAchievements();
     return true;
   },
 
@@ -1082,6 +1179,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         : current.questNotification,
     });
     persistState(get());
+    get().advanceMission('watch_fireworks');
+    get().checkAchievements();
   },
 
   claimDailyBonus: () => {
@@ -1306,14 +1405,24 @@ export const useGameStore = create<GameState>((set, get) => ({
     // Guard against duplicate mini-game completion events!
     if (!current.balloonGame.isPlaying) return;
 
-    const rewardTokens = Math.max(10, Math.floor(current.balloonGame.score / 2));
+    const score = current.balloonGame.score;
+    const rewardTokens = calculateBalloonReward(score);
     soundEngine.playTokenEarned();
 
     const newTokens = current.tokens + rewardTokens;
-    const newHighScore = Math.max(current.balloonGame.highScore, current.balloonGame.score);
+    const { entries: updatedLeaderboard, isNewRecord } = recordPersonalBest(
+      current.stats?.balloonLeaderboard || [],
+      score
+    );
+    const newHighScore = Math.max(current.balloonGame.highScore, score);
+    if (isNewRecord && score > 0) {
+      soundEngine.playQuestComplete();
+    }
+
     const updatedStats: MiniGameStats = {
       ...current.stats,
       balloonHighScore: newHighScore,
+      balloonLeaderboard: updatedLeaderboard,
       totalTokensEarned: (current.stats?.totalTokensEarned ?? current.tokens) + rewardTokens,
     };
     const updatedHistory: TokenTransaction[] = [
@@ -1351,6 +1460,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         : current.questNotification,
     });
     persistState(get());
+    get().advanceMission('play_balloon_game');
+    get().checkAchievements();
   },
 
   startRingTossGame: () => {
@@ -1426,10 +1537,19 @@ export const useGameStore = create<GameState>((set, get) => ({
     const rewardTokens = calculateRingTossReward(score);
 
     const newTokens = current.tokens + rewardTokens;
+    const { entries: updatedLeaderboard, isNewRecord } = recordPersonalBest(
+      current.stats?.ringTossLeaderboard || [],
+      score
+    );
     const newHighScore = Math.max(current.ringTossGame.highScore, score);
+    if (isNewRecord && score > 0) {
+      soundEngine.playQuestComplete();
+    }
+
     const updatedStats: MiniGameStats = {
       ...current.stats,
       ringTossHighScore: newHighScore,
+      ringTossLeaderboard: updatedLeaderboard,
       totalTokensEarned: (current.stats?.totalTokensEarned ?? current.tokens) + rewardTokens,
     };
 
@@ -1462,6 +1582,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     persistState(get());
+    get().advanceMission('play_ring_toss');
+    get().checkAchievements();
   },
 
   cancelRingTossGame: () => {
@@ -1475,6 +1597,194 @@ export const useGameStore = create<GameState>((set, get) => ({
         timeLeft: RING_TOSS_TIME_LIMIT,
       },
     });
+  },
+
+  checkAchievements: () => {
+    const current = get();
+    const context = {
+      stats: current.stats,
+      magicalDiyasCount: current.quest.collectedDiyas.length,
+      collectiblesCount: current.collectibles.length,
+      hasWatchedFireworks: (current.stats.fireworksWatchedCount || 0) > 0,
+      hasEnjoyedStage: current.culturalStageState.isPlayingMusic,
+      ringTossHits: current.ringTossGame.hitsCount || (current.stats.ringTossHighScore > 0 ? 1 : 0),
+      dailyStreak: current.dailyDarshan.streak,
+    };
+
+    const newlyUnlocked = evaluateAchievements(current.achievements, context);
+    if (newlyUnlocked.length === 0) return;
+
+    const updatedAchievements = [...current.achievements, ...newlyUnlocked.map((a) => a.id)];
+    const firstAch = newlyUnlocked[0];
+
+    soundEngine.playQuestComplete();
+
+    set({
+      achievements: updatedAchievements,
+      questNotification: !current.questNotification
+        ? {
+            id: 'ach_' + firstAch.id + '_' + Date.now(),
+            title: '🏆 Achievement Unlocked!',
+            message: firstAch.title + ': ' + firstAch.description,
+            type: 'completed',
+            timestamp: Date.now(),
+          }
+        : current.questNotification,
+    });
+    persistState(get());
+  },
+
+  advanceMission: (actionId: string, amount = 1) => {
+    const current = get();
+    const { updatedJournal, justCompletedStep, justCompletedMission, completedMission } =
+      recordMissionAction(current.missions, actionId, amount);
+
+    if (!justCompletedStep && !justCompletedMission) return;
+
+    if (justCompletedMission && completedMission) {
+      soundEngine.playQuestComplete();
+      set({
+        missions: updatedJournal,
+        questNotification: {
+          id: 'mission_completed_' + completedMission.id + '_' + Date.now(),
+          title: '🎉 Festival Mission Complete!',
+          message: completedMission.title + ' fulfilled! Open Missions to claim reward.',
+          type: 'completed',
+          timestamp: Date.now(),
+        },
+      });
+    } else if (justCompletedStep) {
+      soundEngine.playQuestChime();
+      set({ missions: updatedJournal });
+    }
+    persistState(get());
+    get().checkAchievements();
+  },
+
+  claimMissionReward: (missionId: string) => {
+    const current = get();
+    const validation = validateMissionClaim(current.missions, missionId);
+    if (!validation.valid) return false;
+
+    const reward = validation.rewardTokens;
+    soundEngine.playTokenEarned();
+    const newTokens = current.tokens + reward;
+    const newStats = {
+      ...current.stats,
+      totalTokensEarned: (current.stats.totalTokensEarned ?? current.tokens) + reward,
+    };
+    const updatedHistory = [
+      ...current.tokenHistory,
+      {
+        id: 'mission_reward_' + Date.now(),
+        amount: reward,
+        source: 'Mission Reward: ' + missionId,
+        timestamp: Date.now(),
+      },
+    ].slice(-20);
+
+    set({
+      tokens: newTokens,
+      stats: newStats,
+      tokenHistory: updatedHistory,
+      recentTokenDelta: { amount: reward, id: String(Date.now()) },
+      missions: validation.updatedJournal,
+    });
+    persistState(get());
+    return true;
+  },
+
+  discoverCollectible: (collectibleId: string) => {
+    const current = get();
+    const result = validateCollectiblePickup(current.collectibles, collectibleId);
+    if (!result.valid || !result.config) return false;
+
+    const keepsake = result.config;
+    soundEngine.playQuestChime();
+    soundEngine.playTokenEarned();
+
+    const reward = keepsake.rewardTokens;
+    const newTokens = current.tokens + reward;
+    const newStats = {
+      ...current.stats,
+      totalTokensEarned: (current.stats.totalTokensEarned ?? current.tokens) + reward,
+    };
+    const updatedHistory = [
+      ...current.tokenHistory,
+      {
+        id: 'keepsake_' + Date.now(),
+        amount: reward,
+        source: 'Discovered: ' + keepsake.name,
+        timestamp: Date.now(),
+      },
+    ].slice(-20);
+
+    set({
+      collectibles: result.updatedList,
+      tokens: newTokens,
+      stats: newStats,
+      tokenHistory: updatedHistory,
+      recentTokenDelta: { amount: reward, id: String(Date.now()) },
+      prompt: current.prompt?.id === collectibleId ? null : current.prompt,
+      questNotification: {
+        id: 'keepsake_' + collectibleId + '_' + Date.now(),
+        title: '✨ Keepsake Discovered: ' + keepsake.name,
+        message: keepsake.description + ' (+' + reward + ' 🪙)',
+        type: 'collected',
+        timestamp: Date.now(),
+      },
+    });
+
+    persistState(get());
+    get().advanceMission('collect_keepsake');
+    get().checkAchievements();
+    return true;
+  },
+
+  claimAchievementReward: (achievementId: string) => {
+    const current = get();
+    const validation = validateAchievementClaim(
+      current.achievements,
+      current.claimedAchievements,
+      achievementId
+    );
+    if (!validation.valid) return false;
+
+    const reward = validation.rewardTokens;
+    soundEngine.playTokenEarned();
+    const newTokens = current.tokens + reward;
+    const newStats = {
+      ...current.stats,
+      totalTokensEarned: (current.stats.totalTokensEarned ?? current.tokens) + reward,
+    };
+    const updatedHistory = [
+      ...current.tokenHistory,
+      {
+        id: 'achievement_reward_' + Date.now(),
+        amount: reward,
+        source: 'Achievement Reward: ' + achievementId,
+        timestamp: Date.now(),
+      },
+    ].slice(-20);
+
+    set({
+      tokens: newTokens,
+      stats: newStats,
+      tokenHistory: updatedHistory,
+      recentTokenDelta: { amount: reward, id: String(Date.now()) },
+      claimedAchievements: validation.updatedClaimedList,
+    });
+    persistState(get());
+    return true;
+  },
+
+  setTutorialCompleted: (completed: boolean) => {
+    set({ tutorialCompleted: completed });
+    persistState(get());
+  },
+
+  openTutorial: () => {
+    set({ activeModal: 'tutorial' });
   },
 
   // Attractions: Ferris Wheel

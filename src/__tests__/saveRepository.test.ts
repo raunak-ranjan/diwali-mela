@@ -201,6 +201,7 @@ describe('LocalSaveRepository', () => {
         musicVolume: 0.5,
         touchSensitivity: 1.2,
         reducedMotion: true,
+        ambientFireworks: false,
       },
       lastSavedAt: 1729000000000,
     };

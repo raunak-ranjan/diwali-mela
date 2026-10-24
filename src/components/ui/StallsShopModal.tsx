@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGameStore, SHOP_CATALOG } from '../../stores/useGameStore';
 import { useNpcStore } from '../../stores/useNpcStore';
-import { Coins, ShoppingBag, Check, X } from 'lucide-react';
+import { Coins, ShoppingBag, Check, X, AlertCircle } from 'lucide-react';
 
 export const StallsShopModal: React.FC = () => {
   const activeModal = useGameStore((s) => s.activeModal);
@@ -10,13 +10,33 @@ export const StallsShopModal: React.FC = () => {
   const inventory = useGameStore((s) => s.inventory);
   const purchaseItem = useGameStore((s) => s.purchaseItem);
   const activeGreeting = useNpcStore((s) => s.activeGreeting);
+  const activeShopCategory = useGameStore((s) => s.activeShopCategory);
 
-  const [activeCategory, setActiveCategory] = useState<'all' | 'sweet' | 'diya' | 'handicraft'>('all');
+  const [activeCategory, setActiveCategory] = useState<'all' | 'sweet' | 'snack' | 'diya' | 'handicraft'>(
+    activeShopCategory || 'all'
+  );
   const [lastPurchased, setLastPurchased] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Auto-dismiss error message
+  useEffect(() => {
+    if (!errorMessage) return;
+    const t = setTimeout(() => setErrorMessage(null), 4000);
+    return () => clearTimeout(t);
+  }, [errorMessage]);
+
+  useEffect(() => {
+    if (activeModal !== 'shop') return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeModal();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeModal, closeModal]);
 
   if (activeModal !== 'shop') return null;
 
-  // Determine contextual vendor dialogue
+  // Contextual vendor dialogue
   const vendorDialogue = activeGreeting
     ? {
         name: activeGreeting.vendorName,
@@ -29,35 +49,54 @@ export const StallsShopModal: React.FC = () => {
         shop: 'Shree Ganesh Sweets',
         greeting: 'Namaste! Every mithai is prepared fresh with pure ghee and festive love.',
       }
-    : activeCategory === 'diya' || activeCategory === 'handicraft'
+    : activeCategory === 'snack'
+    ? {
+        name: 'Chander Bhaiya',
+        shop: 'Old Delhi Chaat Bhandar',
+        greeting: 'Garma-garam samosas, spicy kulhad chai, and tangy golgappe! Enjoy festive treats.',
+      }
+    : activeCategory === 'diya'
     ? {
         name: 'Artisan Suresh',
-        shop: 'Festive Handicrafts',
+        shop: 'Festive Clay Diyas',
         greeting: 'Shubh Deepavali! May these glowing clay diyas bring light and joy to your home.',
+      }
+    : activeCategory === 'handicraft'
+    ? {
+        name: 'Shilpa Didi',
+        shop: 'Akash Kandils & Keepsakes',
+        greeting: 'Intricate handmade lanterns and festive crafts to brighten every threshold.',
       }
     : {
         name: 'Mela Vendors',
         shop: 'Diwali Bazaar',
-        greeting: 'Welcome to the festive bazaar! Sweets, clay diyas, and handcrafted treasures await you.',
+        greeting: 'Welcome to the festive bazaar! Sweets, savory chaat, clay diyas, and handicrafts await you.',
       };
 
   const filteredItems = SHOP_CATALOG.filter((item) => {
     if (activeCategory === 'all') return true;
-    if (activeCategory === 'sweet') return item.category === 'sweet' || item.category === 'snack';
+    if (activeCategory === 'sweet') return item.category === 'sweet';
+    if (activeCategory === 'snack') return item.category === 'snack';
     if (activeCategory === 'diya') return item.category === 'diya' || item.category === 'sparkler';
     return item.category === 'handicraft';
   });
 
-  const handleBuy = (id: string) => {
-    const success = purchaseItem(id);
+  const handleBuy = (item: (typeof SHOP_CATALOG)[0]) => {
+    if (tokens < item.price) {
+      setErrorMessage(`You need ${item.price - tokens} more tokens to buy ${item.name}! Win tokens at Carnival games.`);
+      return;
+    }
+
+    const success = purchaseItem(item.id);
     if (success) {
-      setLastPurchased(id);
+      setErrorMessage(null);
+      setLastPurchased(item.id);
       setTimeout(() => setLastPurchased(null), 2500);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn select-none">
       <div className="relative max-w-2xl w-full max-h-[90vh] bg-gradient-to-b from-slate-900 via-festive-nightBlue to-slate-950 border-2 border-festive-gold/60 rounded-3xl shadow-2xl p-5 md:p-6 text-white flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-amber-500/30">
@@ -67,7 +106,7 @@ export const StallsShopModal: React.FC = () => {
               <h2 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-festive-gold to-festive-saffron">
                 DIWALI MELA BAZAAR
               </h2>
-              <div className="text-xs text-amber-200/80">Traditional Sweets, Clay Diyas & Festive Delights</div>
+              <div className="text-xs text-amber-200/80">Traditional Sweets, Savory Chaat, Clay Diyas & Keepsakes</div>
             </div>
           </div>
 
@@ -85,18 +124,33 @@ export const StallsShopModal: React.FC = () => {
           </div>
         </div>
 
+        {/* Insufficient Funds / Feedback Toast */}
+        {errorMessage && (
+          <div
+            data-testid="shop-error-toast"
+            className="my-2 bg-red-950/80 border border-red-500/50 rounded-2xl p-2.5 px-3.5 flex items-center gap-2 text-xs text-red-200 animate-fadeIn"
+          >
+            <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
         {/* Categories */}
-        <div className="flex gap-2 my-3 overflow-x-auto pb-1 text-xs">
+        <div className="flex gap-2 my-2.5 overflow-x-auto pb-1 text-xs">
           {[
             { id: 'all', label: 'All Items' },
             { id: 'sweet', label: 'Mithai & Sweets 🍯' },
+            { id: 'snack', label: 'Chaat & Snacks 🥟' },
             { id: 'diya', label: 'Diyas & Sparklers 🪔' },
             { id: 'handicraft', label: 'Lanterns & Gifts 🏮' },
           ].map((cat) => (
             <button
               key={cat.id}
-              onClick={() => setActiveCategory(cat.id as any)}
-              className={`py-1.5 px-3.5 rounded-full font-bold transition-all shrink-0 cursor-pointer ${
+              onClick={() => {
+                setActiveCategory(cat.id as any);
+                setErrorMessage(null);
+              }}
+              className={`py-1.5 px-3 rounded-full font-bold transition-all shrink-0 cursor-pointer ${
                 activeCategory === cat.id
                   ? 'bg-gradient-to-r from-festive-gold to-festive-saffron text-amber-950 shadow-md'
                   : 'bg-slate-800/80 text-gray-300 hover:bg-slate-700'
@@ -159,14 +213,13 @@ export const StallsShopModal: React.FC = () => {
                   </div>
 
                   <button
-                    onClick={() => handleBuy(item.id)}
-                    disabled={!canAfford}
+                    onClick={() => handleBuy(item)}
                     className={`py-1.5 px-3 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                       isJustPurchased
                         ? 'bg-emerald-600 text-white'
                         : canAfford
                         ? 'bg-gradient-to-r from-festive-gold to-festive-saffron text-amber-950 hover:brightness-110 active:scale-95'
-                        : 'bg-slate-800 text-gray-500 cursor-not-allowed'
+                        : 'bg-slate-800 hover:bg-slate-700/80 text-amber-300/60 border border-slate-700 hover:border-red-500/50'
                     }`}
                   >
                     {isJustPurchased ? (
@@ -174,10 +227,14 @@ export const StallsShopModal: React.FC = () => {
                         <Check className="w-3.5 h-3.5" />
                         <span>Purchased!</span>
                       </>
-                    ) : (
+                    ) : canAfford ? (
                       <>
                         <ShoppingBag className="w-3.5 h-3.5" />
                         <span>Buy with Tokens</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Need {item.price - tokens} More</span>
                       </>
                     )}
                   </button>

@@ -1,7 +1,10 @@
+import { FestivalCollectibles } from './environment/FestivalCollectibles';
 import React, { Suspense } from 'react';
 import { FestivalLighting } from './environment/FestivalLighting';
 import { GroundAndSky } from './environment/GroundAndSky';
 import { FloatingEmbers } from './environment/FloatingEmbers';
+import { FestivalSmoke } from './environment/FestivalSmoke';
+import { WindDecorations } from './environment/WindDecorations';
 import { DistantScenery } from './environment/DistantScenery';
 import { FairyLights } from './environment/FairyLights';
 import { InstancedDiyas } from './environment/InstancedDiyas';
@@ -32,8 +35,12 @@ export const MelaScene: React.FC = () => {
       {/* Ground & Night Sky */}
       <GroundAndSky />
 
-      {/* Floating Festival Embers */}
+      {/* Wind-Reactive Bunting, Planters & Foliage */}
+      <WindDecorations />
+
+      {/* Floating Festival Embers & Sacred Dhoop Smoke */}
       <FloatingEmbers />
+      <FestivalSmoke />
 
       {/* Distant Royal Architecture & Environmental Depth */}
       <DistantScenery />
@@ -46,6 +53,9 @@ export const MelaScene: React.FC = () => {
 
       {/* Sacred Quest Collectible Diyas */}
       <MagicalDiyas />
+
+      {/* Hidden Festival Exploration Keepsakes */}
+      <FestivalCollectibles />
 
       {/* Fairground Zones */}
       <GrandEntrance />

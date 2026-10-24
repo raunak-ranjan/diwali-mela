@@ -1,3 +1,4 @@
+import type { MissionJournalSaveState } from './missions';
 import type { PlayerCosmetics, TokenTransaction } from './rewards';
 import type { DailyDarshanSaveState } from './daily';
 
@@ -35,6 +36,12 @@ export interface PlayerInventory {
   items: Record<string, number>;
 }
 
+export interface LeaderboardEntry {
+  score: number;
+  date: string;
+  details?: string;
+}
+
 export interface MiniGameStats {
   balloonHighScore: number;
   ringTossHighScore: number;
@@ -47,6 +54,8 @@ export interface MiniGameStats {
   dailyStreak?: number;
   dailySetsCompleted?: number;
   shrineOfferingsCount?: number;
+  balloonLeaderboard?: LeaderboardEntry[];
+  ringTossLeaderboard?: LeaderboardEntry[];
 }
 
 export interface QuestProgress {
@@ -72,6 +81,11 @@ export interface SaveDataV1 {
   cosmetics?: PlayerCosmetics;
   tokenHistory?: TokenTransaction[];
   dailyDarshan?: DailyDarshanSaveState;
+  collectibles?: string[];
+  achievements?: string[];
+  claimedAchievements?: string[];
+  missions?: MissionJournalSaveState;
+  tutorialCompleted?: boolean;
   settings: {
     graphicsQuality: GraphicsQuality;
     masterVolume: number;
@@ -79,6 +93,7 @@ export interface SaveDataV1 {
     musicVolume: number;
     touchSensitivity: number;
     reducedMotion: boolean;
+    ambientFireworks: boolean;
   };
   lastSavedAt: number;
 }
@@ -95,7 +110,7 @@ export interface InteractionPromptState {
   id: string;
   label: string;
   sublabel?: string;
-  actionType: 'shop' | 'balloon_game' | 'ring_toss' | 'rangoli' | 'diya' | 'ferris_wheel' | 'stage' | 'fireworks' | 'quest';
+  actionType: 'shop' | 'balloon_game' | 'ring_toss' | 'rangoli' | 'diya' | 'ferris_wheel' | 'stage' | 'fireworks' | 'quest' | 'talk';
   position: [number, number, number];
   secondaryAction?: InteractionPromptAction;
 }

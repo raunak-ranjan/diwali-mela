@@ -276,6 +276,7 @@ describe('Festival Pouch & Interactive Inventory Mechanics', () => {
         musicVolume: 0.5,
         touchSensitivity: 1.0,
         reducedMotion: false,
+        ambientFireworks: true,
       },
       lastSavedAt: Date.now(),
     });

@@ -15,6 +15,7 @@ import {
 } from '../../../systems/physics';
 import { PlayerCosmetics } from './PlayerCosmetics';
 import { PlayerSparkler } from './PlayerSparkler';
+import { soundEngine } from '../../../audio/soundEngine';
 
 export const PlayerController = () => {
   const { camera } = useThree();
@@ -50,6 +51,9 @@ export const PlayerController = () => {
     accumulator: 0,
   });
 
+  // Debounce timestamp for interaction actions
+  const lastInteractTime = useRef(0);
+
   // Expose positioning for automated audit & testing inspection
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -61,6 +65,8 @@ export const PlayerController = () => {
         if (newYaw !== undefined) yaw.current = newYaw;
         if (newPitch !== undefined) pitch.current = newPitch;
       };
+      (window as any).__collisionSystem = collisionSystem;
+      (window as any).__interactionRegistry = interactionRegistry;
     }
   }, []);
 
@@ -126,12 +132,29 @@ export const PlayerController = () => {
         setKey('jump', true);
       }
 
+      if (e.key === 'Escape') {
+        const state = useGameStore.getState();
+        if (state.activeModal !== 'none') {
+          state.closeModal();
+        } else {
+          state.openModal('pause');
+        }
+        return;
+      }
+
       if (e.code === 'KeyE') {
         if (e.repeat) return;
-        const prompt = useGameStore.getState().prompt;
+        const now = Date.now();
+        if (now - lastInteractTime.current < 400) return;
+        const state = useGameStore.getState();
+        if (state.activeModal !== 'none') return;
+        const prompt = state.prompt;
         if (prompt && prompt.active) {
-          const nearest = interactionRegistry.findNearest(pos.current);
-          if (nearest) nearest.onInteract();
+          const nearest = interactionRegistry.findNearest(pos.current, true);
+          if (nearest) {
+            lastInteractTime.current = now;
+            nearest.onInteract();
+          }
         }
       }
 
@@ -236,6 +259,7 @@ export const PlayerController = () => {
       pos.current.set(cabinX, cabinY, cabinZ);
       if (playerRef.current) {
         playerRef.current.position.copy(pos.current);
+      soundEngine.updateListenerPosition(pos.current.x, pos.current.y, pos.current.z);
       }
 
       // First-person panoramic riding camera
@@ -376,7 +400,7 @@ export const PlayerController = () => {
     // ── End Camera ─────────────────────────────────────────────────────────
 
     // Interaction Proximity Check
-    const nearest = interactionRegistry.findNearest(pos.current);
+    const nearest = interactionRegistry.findNearest(pos.current, true);
     if (nearest) {
       setPrompt({
         active: true,

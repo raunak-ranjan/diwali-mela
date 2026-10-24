@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../../stores/useGameStore';
 import { KNOWN_COSMETICS, type CosmeticItem } from '../../types/rewards';
+import { FESTIVAL_ACHIEVEMENTS_CONFIG } from '../../types/achievements';
+import { FESTIVAL_COLLECTIBLES_CONFIG } from '../../types/collectibles';
 import {
   Coins,
   X,
@@ -28,10 +30,23 @@ export const RewardsProgressionModal: React.FC = () => {
   const tokenHistory = useGameStore((s) => s.tokenHistory);
   const unlockCosmetic = useGameStore((s) => s.unlockCosmetic);
   const equipCosmetic = useGameStore((s) => s.equipCosmetic);
+  const achievements = useGameStore((s) => s.achievements);
+  const claimedAchievements = useGameStore((s) => s.claimedAchievements);
+  const claimAchievementReward = useGameStore((s) => s.claimAchievementReward);
+  const collectibles = useGameStore((s) => s.collectibles);
   const reducedMotion = useGameStore((s) => s.settings.reducedMotion);
 
   const [activeTab, setActiveTab] = useState<'wallet' | 'wardrobe' | 'progression'>('wardrobe');
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeModal !== 'rewards') return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeModal();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeModal, closeModal]);
 
   if (activeModal !== 'rewards') return null;
 
@@ -53,6 +68,13 @@ export const RewardsProgressionModal: React.FC = () => {
     const success = unlockCosmetic(item.id);
     if (success) {
       showFeedback(`Unlocked ${item.name}!`);
+    }
+  };
+
+  const handleClaimAchievement = (achId: string) => {
+    const success = claimAchievementReward(achId);
+    if (success) {
+      showFeedback('Achievement reward claimed! (+tokens added)');
     }
   };
 
@@ -524,6 +546,136 @@ export const RewardsProgressionModal: React.FC = () => {
                     </div>
                   </div>
                 </div>
+                {/* ── 6. FESTIVAL ACHIEVEMENTS ── */}
+                <div className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl sm:col-span-2">
+                  <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+                    <div className="flex items-center gap-2">
+                      <Trophy className="w-5 h-5 text-amber-400" />
+                      <h4 className="font-bold text-white text-xs sm:text-sm">Diwali Mela Achievements</h4>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold text-festive-gold bg-amber-950/60 px-2.5 py-0.5 rounded-full border border-amber-500/30">
+                      {achievements.length} / {FESTIVAL_ACHIEVEMENTS_CONFIG.length} Unlocked
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {FESTIVAL_ACHIEVEMENTS_CONFIG.map((ach) => {
+                      const isUnlocked = achievements.includes(ach.id);
+                      const isClaimed = claimedAchievements.includes(ach.id);
+
+                      return (
+                        <div
+                          key={ach.id}
+                          className={`p-2.5 rounded-xl border flex items-start gap-2.5 transition-all ${
+                            isUnlocked
+                              ? 'bg-slate-950/70 border-amber-500/40 text-gray-200'
+                              : 'bg-slate-950/30 border-slate-800/80 text-gray-500'
+                          }`}
+                        >
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-base ${
+                              isUnlocked ? 'bg-amber-500/20 shadow-sm' : 'bg-slate-800/50 grayscale'
+                            }`}
+                          >
+                            {ach.icon}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1">
+                              <span
+                                className={`text-xs font-bold truncate ${
+                                  isUnlocked ? 'text-white' : 'text-gray-400'
+                                }`}
+                              >
+                                {ach.title}
+                              </span>
+                              <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-slate-800 text-amber-300/80 shrink-0">
+                                {ach.category}
+                              </span>
+                            </div>
+
+                            <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-2">
+                              {ach.description}
+                            </p>
+
+                            <div className="mt-2 flex items-center justify-between">
+                              <span className="text-[10px] font-mono font-bold text-festive-gold">
+                                +{ach.rewardTokens} 🪙
+                              </span>
+
+                              {isUnlocked && !isClaimed && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleClaimAchievement(ach.id)}
+                                  className="py-0.5 px-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-400 hover:brightness-110 active:scale-95 text-slate-950 font-black text-[10px] shadow cursor-pointer transition-all"
+                                >
+                                  Claim Reward
+                                </button>
+                              )}
+
+                              {isUnlocked && isClaimed && (
+                                <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  Claimed
+                                </span>
+                              )}
+
+                              {!isUnlocked && (
+                                <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                                  <Lock className="w-3 h-3" />
+                                  Locked
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* ── 7. FESTIVAL KEEPSAKES SHOWCASE ── */}
+                <div className="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl sm:col-span-2">
+                  <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-amber-400" />
+                      <h4 className="font-bold text-white text-xs sm:text-sm">Discovered Festival Keepsakes</h4>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold text-festive-gold bg-amber-950/60 px-2.5 py-0.5 rounded-full border border-amber-500/30">
+                      {collectibles.length} / {FESTIVAL_COLLECTIBLES_CONFIG.length} Discovered
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {FESTIVAL_COLLECTIBLES_CONFIG.map((item) => {
+                      const isFound = collectibles.includes(item.id);
+
+                      return (
+                        <div
+                          key={item.id}
+                          className={`p-2.5 rounded-xl border flex items-start gap-2.5 ${
+                            isFound
+                              ? 'bg-slate-950/70 border-amber-500/30 text-gray-200'
+                              : 'bg-slate-950/30 border-slate-800 text-gray-500'
+                          }`}
+                        >
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-base ${isFound ? 'bg-amber-500/20' : 'bg-slate-800/40 grayscale'}`}>
+                            {isFound ? item.icon : '🔍'}
+                          </div>
+                          <div>
+                            <span className={`text-xs font-bold block ${isFound ? 'text-amber-200' : 'text-gray-400'}`}>
+                              {isFound ? item.name : 'Undiscovered Keepsake'}
+                            </span>
+                            <p className="text-[10px] text-slate-400 mt-0.5">
+                              {isFound ? item.lore : item.zoneHint}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
               </div>
             </div>
           )}

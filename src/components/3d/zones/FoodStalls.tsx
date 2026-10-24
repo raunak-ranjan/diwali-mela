@@ -65,7 +65,7 @@ const kulhadsGeometry = (() => {
 })();
 
 export const FoodStalls = () => {
-  const openModal = useGameStore((s) => s.openModal);
+  const openShopWithCategory = useGameStore((s) => s.openShopWithCategory);
 
   useEffect(() => {
     // Register Food Stall collision boxes on West side (X ~ -14)
@@ -83,7 +83,7 @@ export const FoodStalls = () => {
       sublabel: 'Gulab Jamun, Jalebi & Kaju Katli',
       actionType: 'shop',
       onInteract: () => {
-        openModal('shop');
+        openShopWithCategory('sweet');
       },
     });
 
@@ -95,7 +95,7 @@ export const FoodStalls = () => {
       sublabel: 'Crispy Samosa & Festive Treats',
       actionType: 'shop',
       onInteract: () => {
-        openModal('shop');
+        openShopWithCategory('snack');
       },
     });
 
@@ -103,7 +103,7 @@ export const FoodStalls = () => {
       interactionRegistry.unregister('mithai_shop');
       interactionRegistry.unregister('chaat_shop');
     };
-  }, [openModal]);
+  }, [openShopWithCategory]);
 
   return (
     <group>
