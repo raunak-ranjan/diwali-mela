@@ -6,6 +6,13 @@ import { useInputStore } from '../../../stores/useInputStore';
 import { collisionSystem } from '../../../systems/collision';
 import { interactionRegistry } from '../../../systems/interactionRegistry';
 import { computeInputAxes, computeDesiredVelocity } from '../../../utils/movementMath';
+import {
+  stepKinematic,
+  JUMP_VELOCITY,
+  GROUND_Y,
+  GROUND_EPSILON,
+  type KinematicState,
+} from '../../../systems/physics';
 import { PlayerCosmetics } from './PlayerCosmetics';
 import { PlayerSparkler } from './PlayerSparkler';
 
@@ -22,7 +29,7 @@ export const PlayerController = () => {
   const exitFerrisWheel = useGameStore((s) => s.exitFerrisWheel);
 
   // Position and camera state
-  const pos = useRef(new THREE.Vector3(0, 0, -20)); // Start right by the grand entrance threshold
+  const pos = useRef(new THREE.Vector3(0, GROUND_Y, -20)); // Start right by the grand entrance threshold
   const yaw = useRef(0); // Camera horizontal rotation
   const pitch = useRef(0.12); // Subtle natural camera tilt towards the fairground horizon
   const targetCamPos = useRef(new THREE.Vector3(0, 2.3, -25));
@@ -36,11 +43,21 @@ export const PlayerController = () => {
   // Smoothed speed magnitude for camera FOV breathing
   const smoothSpeed = useRef(0);
 
+  // ── Physics state ──────────────────────────────────────────────────────────
+  const kinematicState = useRef<KinematicState>({
+    verticalVelocity: 0,
+    isGrounded: true,
+    accumulator: 0,
+  });
+
   // Expose positioning for automated audit & testing inspection
   useEffect(() => {
     if (typeof window !== 'undefined') {
       (window as any).__teleportPlayer = (x: number, y: number, z: number, newYaw?: number, newPitch?: number) => {
         pos.current.set(x, y, z);
+        kinematicState.current.verticalVelocity = 0;
+        kinematicState.current.isGrounded = y <= GROUND_Y + GROUND_EPSILON;
+        kinematicState.current.accumulator = 0;
         if (newYaw !== undefined) yaw.current = newYaw;
         if (newPitch !== undefined) pitch.current = newPitch;
       };
@@ -52,12 +69,15 @@ export const PlayerController = () => {
   useEffect(() => {
     if (wasRidingRef.current && !isFerrisWheelRiding) {
       // Safely place player on grounded boardwalk steps beside attraction
-      pos.current.set(18.0, 0, 20.0);
+      pos.current.set(18.0, GROUND_Y, 20.0);
       velocity.current.set(0, 0, 0);
+      kinematicState.current.verticalVelocity = 0;
+      kinematicState.current.isGrounded = true;
+      kinematicState.current.accumulator = 0;
       yaw.current = 0;
       pitch.current = 0.12;
       if (playerRef.current) {
-        playerRef.current.position.set(18.0, 0, 20.0);
+        playerRef.current.position.set(18.0, GROUND_Y, 20.0);
       }
     }
     wasRidingRef.current = isFerrisWheelRiding;
@@ -101,6 +121,11 @@ export const PlayerController = () => {
       if (e.code === 'KeyA' || e.code === 'ArrowLeft') setKey('left', true);
       if (e.code === 'KeyD' || e.code === 'ArrowRight') setKey('right', true);
 
+      // Jump on Space (desktop only; mobile uses dedicated HUD button)
+      if (e.code === 'Space' && !e.repeat) {
+        setKey('jump', true);
+      }
+
       if (e.code === 'KeyE') {
         if (e.repeat) return;
         const prompt = useGameStore.getState().prompt;
@@ -129,6 +154,7 @@ export const PlayerController = () => {
       if (e.code === 'KeyS' || e.code === 'ArrowDown') setKey('backward', false);
       if (e.code === 'KeyA' || e.code === 'ArrowLeft') setKey('left', false);
       if (e.code === 'KeyD' || e.code === 'ArrowRight') setKey('right', false);
+      if (e.code === 'Space') setKey('jump', false);
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -241,6 +267,20 @@ export const PlayerController = () => {
       input.resetTouchLookDelta();
     }
 
+    // ── Jump input (consume immediately while grounded) ────────────────────
+    if (input.jump && kinematicState.current.isGrounded) {
+      kinematicState.current.verticalVelocity = JUMP_VELOCITY;
+      kinematicState.current.isGrounded = false;
+      // Clear jump key so it doesn't fire multiple substeps
+      useInputStore.getState().setKey('jump', false);
+    }
+
+    // ── Vertical physics (fixed timestep) ─────────────────────────────────
+    const physicsResult = stepKinematic(pos.current.y, kinematicState.current, safeDelta);
+    pos.current.y = physicsResult.y;
+    kinematicState.current = physicsResult.state;
+
+    // ── Horizontal movement ────────────────────────────────────────────────
     // Desired movement direction relative to camera yaw
     const axes = computeInputAxes(input);
     const desiredVel = computeDesiredVelocity(axes, yaw.current, maxSpeed);
@@ -269,27 +309,34 @@ export const PlayerController = () => {
       );
     }
 
-    // Head-bob: advance phase only while moving
-    if (isMoving) {
+    // Head-bob: advance phase only while moving AND grounded
+    const settings = useGameStore.getState().settings;
+    if (isMoving && kinematicState.current.isGrounded && !settings.reducedMotion) {
       // Bob frequency ~2.5 Hz at full speed
       bobPhase.current += safeDelta * 2.5 * Math.PI * 2 * smoothSpeed.current;
       wasMoving.current = true;
     } else if (wasMoving.current) {
-      // Ease bob back to zero when player stops
+      // Ease bob back to zero when player stops or is airborne
       bobPhase.current = THREE.MathUtils.lerp(bobPhase.current, Math.round(bobPhase.current / Math.PI) * Math.PI, 1 - Math.exp(-8 * safeDelta));
       if (Math.abs(Math.sin(bobPhase.current)) < 0.02) {
         bobPhase.current = 0;
         wasMoving.current = false;
       }
     }
-    const bobOffset = Math.sin(bobPhase.current) * 0.038 * smoothSpeed.current;
+    const bobOffset = settings.reducedMotion ? 0 : Math.sin(bobPhase.current) * 0.038 * smoothSpeed.current;
 
-    // Apply velocity to position
-    const targetPos = pos.current.clone().addScaledVector(velocity.current, safeDelta);
+    // Apply horizontal velocity to XZ position (Y is owned by physics)
+    const targetXZ = new THREE.Vector3(
+      pos.current.x + velocity.current.x * safeDelta,
+      pos.current.y,
+      pos.current.z + velocity.current.z * safeDelta
+    );
 
-    // Collision detection & sliding
-    const resolved = collisionSystem.resolveMovement(pos.current, targetPos, 0.45);
-    pos.current.copy(resolved);
+    // Collision detection & sliding (XZ only; Y is from physics)
+    const resolved = collisionSystem.resolveMovement(pos.current, targetXZ, 0.45);
+    pos.current.x = resolved.x;
+    pos.current.z = resolved.z;
+    // Y is already set by physics above; resolveMovement passes it through unchanged
 
     if (playerRef.current) {
       playerRef.current.position.copy(pos.current);
@@ -318,7 +365,7 @@ export const PlayerController = () => {
 
     // FOV breathing: expand slightly when moving at full speed (+4°), contract at rest
     const perspCam = camera as THREE.PerspectiveCamera;
-    if (perspCam.isPerspectiveCamera) {
+    if (perspCam.isPerspectiveCamera && !settings.reducedMotion) {
       const targetFov = 60 + smoothSpeed.current * 4;
       const nextFov = THREE.MathUtils.lerp(perspCam.fov, targetFov, 1 - Math.exp(-4 * safeDelta));
       if (Math.abs(nextFov - perspCam.fov) > 0.02) {
@@ -353,7 +400,7 @@ export const PlayerController = () => {
   });
 
   return (
-    <group ref={playerRef} position={[0, 0, -20]}>
+    <group ref={playerRef} position={[0, GROUND_Y, -20]}>
       {/* 3D Festive Avatar (Festive Kurta & Dupatta/Scarf) */}
       {/* avatarMeshRef handles rotation; the inner group applies head-bob Y offset */}
       <group ref={avatarMeshRef} position={[0, 0, 0]}>
