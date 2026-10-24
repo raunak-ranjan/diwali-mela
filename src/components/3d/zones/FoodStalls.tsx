@@ -1,4 +1,6 @@
 import { useEffect } from 'react';
+import * as THREE from 'three';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { useGameStore } from '../../../stores/useGameStore';
 import { interactionRegistry } from '../../../systems/interactionRegistry';
 import { collisionSystem } from '../../../systems/collision';
@@ -10,6 +12,57 @@ import {
   SamosaKadhai,
   BrassThali,
 } from '../environment/FestivalProps';
+
+// Pre-batched static stall geometries (created once at module load to save draw calls)
+const stallCornerPolesGeometry = (() => {
+  const pole = new THREE.CylinderGeometry(0.05, 0.06, 2.4, 8);
+  const positions = [
+    [-1.8, 1.9, -1.6],
+    [-1.8, 1.9, 1.6],
+    [1.8, 1.9, -1.6],
+    [1.8, 1.9, 1.6],
+  ];
+  const geos = positions.map(([x, y, z]) => pole.clone().translate(x, y, z));
+  return BufferGeometryUtils.mergeGeometries(geos) || pole;
+})();
+
+const canopyStripesGeometry = (() => {
+  const stripe = new THREE.BoxGeometry(4.82, 0.015, 0.28);
+  const zPositions = [-1.6, -0.96, -0.32, 0.32, 0.96, 1.6];
+  const geos = zPositions.map((z) => stripe.clone().translate(0, 0.035, z));
+  return BufferGeometryUtils.mergeGeometries(geos) || stripe;
+})();
+
+const counterCornerProtectorsGeometry = (() => {
+  const corner = new THREE.BoxGeometry(0.08, 0.09, 0.08);
+  const left = corner.clone().translate(2.2, 1.48, -1.85);
+  const right = corner.clone().translate(2.2, 1.48, 1.85);
+  return BufferGeometryUtils.mergeGeometries([left, right]) || corner;
+})();
+
+const kajuKatliGeometry = (() => {
+  const diamond = new THREE.BoxGeometry(0.07, 0.025, 0.07);
+  diamond.rotateY(0.785);
+  const geos: THREE.BufferGeometry[] = [];
+  [-0.08, 0.08].forEach((x) => {
+    [-0.09, 0, 0.09].forEach((z) => {
+      geos.push(diamond.clone().translate(x, 0.04, z));
+    });
+  });
+  return BufferGeometryUtils.mergeGeometries(geos) || diamond;
+})();
+
+const kulhadsGeometry = (() => {
+  const kulhad = new THREE.CylinderGeometry(0.055, 0.04, 0.16, 12);
+  const geos: THREE.BufferGeometry[] = [];
+  [-0.08, 0.08].forEach((x) => {
+    [-0.08, 0.08].forEach((z) => {
+      geos.push(kulhad.clone().translate(x, 0.08, z));
+    });
+  });
+  geos.push(kulhad.clone().translate(0, 0.22, 0));
+  return BufferGeometryUtils.mergeGeometries(geos) || kulhad;
+})();
 
 export const FoodStalls = () => {
   const openModal = useGameStore((s) => s.openModal);
@@ -70,26 +123,15 @@ export const FoodStalls = () => {
           <meshStandardMaterial color="#9a4312" roughness={0.35} metalness={0.1} />
         </mesh>
 
-        {/* Brass Counter Corner Protectors */}
-        {[-1.85, 1.85].map((z, idx) => (
-          <mesh key={idx} position={[2.2, 1.48, z]}>
-            <boxGeometry args={[0.08, 0.09, 0.08]} />
-            <meshStandardMaterial color="#fbbf24" metalness={0.85} roughness={0.2} />
-          </mesh>
-        ))}
+        {/* Brass Counter Corner Protectors (Batched into 1 draw call) */}
+        <mesh geometry={counterCornerProtectorsGeometry}>
+          <meshStandardMaterial color="#fbbf24" metalness={0.85} roughness={0.2} />
+        </mesh>
 
-        {/* 4 Wooden Corner Canopy Support Poles */}
-        {[
-          [-1.8, -1.6],
-          [-1.8, 1.6],
-          [1.8, -1.6],
-          [1.8, 1.6],
-        ].map(([x, z], idx) => (
-          <mesh key={idx} position={[x, 1.9, z]} castShadow>
-            <cylinderGeometry args={[0.05, 0.06, 2.4, 8]} />
-            <meshStandardMaterial color="#542b14" roughness={0.8} />
-          </mesh>
-        ))}
+        {/* 4 Wooden Corner Canopy Support Poles (Batched into 1 draw call) */}
+        <mesh geometry={stallCornerPolesGeometry} castShadow>
+          <meshStandardMaterial color="#542b14" roughness={0.8} />
+        </mesh>
 
         {/* Traditional Striped Fabric Canopy (Alternating Crimson & Cream Stripes) */}
         <group position={[0, 3.25, 0]} rotation={[0, 0, -0.15]}>
@@ -99,13 +141,10 @@ export const FoodStalls = () => {
             <meshStandardMaterial color="#991b1b" roughness={0.7} />
           </mesh>
 
-          {/* 6 Alternating Cream Stripes */}
-          {[-1.6, -0.96, -0.32, 0.32, 0.96, 1.6].map((z, idx) => (
-            <mesh key={idx} position={[0, 0.035, z]}>
-              <boxGeometry args={[4.82, 0.015, 0.28]} />
-              <meshStandardMaterial color="#fef3c7" roughness={0.75} />
-            </mesh>
-          ))}
+          {/* 6 Alternating Cream Stripes (Batched into 1 draw call) */}
+          <mesh geometry={canopyStripesGeometry}>
+            <meshStandardMaterial color="#fef3c7" roughness={0.75} />
+          </mesh>
 
           {/* Scalloped Front Valance with Antique Gold Trim */}
           <mesh position={[2.38, -0.22, 0]}>
@@ -161,27 +200,16 @@ export const FoodStalls = () => {
         {/* 3. Gulab Jamun Bronze Handi */}
         <GulabJamunHandi position={[1.85, 1.52, 0.4]} />
 
-        {/* 4. Silver Foil Kaju Katli Platter */}
+        {/* 4. Silver Foil Kaju Katli Platter (Batched diamond sweets) */}
         <group position={[1.85, 1.52, 1.15]}>
           <BrassThali radius={0.3} />
-          {/* Diamond Cut Cashew Sweets with Silver Vark */}
-          {[-0.08, 0.08].map((x, xi) =>
-            [-0.09, 0, 0.09].map((z, zi) => (
-              <mesh
-                key={`${xi}-${zi}`}
-                position={[x, 0.04, z]}
-                rotation={[0, 0.785, 0]}
-                castShadow
-              >
-                <boxGeometry args={[0.07, 0.025, 0.07]} />
-                <meshStandardMaterial
-                  color="#e2e8f0"
-                  metalness={0.85}
-                  roughness={0.2}
-                />
-              </mesh>
-            ))
-          )}
+          <mesh geometry={kajuKatliGeometry} castShadow>
+            <meshStandardMaterial
+              color="#e2e8f0"
+              metalness={0.85}
+              roughness={0.2}
+            />
+          </mesh>
         </group>
 
         {/* Traditional Brass Weighing Scale (Taraazu) on side shelf */}
@@ -221,18 +249,10 @@ export const FoodStalls = () => {
           <meshStandardMaterial color="#9a4312" roughness={0.4} />
         </mesh>
 
-        {/* 4 Wooden Corner Poles */}
-        {[
-          [-1.8, -1.6],
-          [-1.8, 1.6],
-          [1.8, -1.6],
-          [1.8, 1.6],
-        ].map(([x, z], idx) => (
-          <mesh key={idx} position={[x, 1.9, z]} castShadow>
-            <cylinderGeometry args={[0.05, 0.06, 2.4, 8]} />
-            <meshStandardMaterial color="#4a2511" roughness={0.8} />
-          </mesh>
-        ))}
+        {/* 4 Wooden Corner Poles (Batched into 1 draw call) */}
+        <mesh geometry={stallCornerPolesGeometry} castShadow>
+          <meshStandardMaterial color="#4a2511" roughness={0.8} />
+        </mesh>
 
         {/* Saffron & Emerald Green Striped Canopy */}
         <group position={[0, 3.25, 0]} rotation={[0, 0, -0.15]}>
@@ -240,13 +260,10 @@ export const FoodStalls = () => {
             <boxGeometry args={[4.8, 0.06, 4.2]} />
             <meshStandardMaterial color="#ea580c" roughness={0.7} />
           </mesh>
-          {/* Alternating Emerald Green Stripes */}
-          {[-1.6, -0.96, -0.32, 0.32, 0.96, 1.6].map((z, idx) => (
-            <mesh key={idx} position={[0, 0.035, z]}>
-              <boxGeometry args={[4.82, 0.015, 0.28]} />
-              <meshStandardMaterial color="#047857" roughness={0.75} />
-            </mesh>
-          ))}
+          {/* Alternating Emerald Green Stripes (Batched into 1 draw call) */}
+          <mesh geometry={canopyStripesGeometry}>
+            <meshStandardMaterial color="#047857" roughness={0.75} />
+          </mesh>
           {/* Front Frill */}
           <mesh position={[2.38, -0.22, 0]}>
             <boxGeometry args={[0.06, 0.42, 4.2]} />
@@ -291,23 +308,13 @@ export const FoodStalls = () => {
         {/* Large Cast-Iron Samosa Kadhai */}
         <SamosaKadhai position={[1.8, 1.52, -1.0]} />
 
-        {/* Stacked Earthen Clay Kulhads (for Masala Chai & Lassi) */}
+        {/* Stacked Earthen Clay Kulhads (Batched into 1 draw call) */}
         <group position={[1.85, 1.52, -0.15]}>
-          {[-0.08, 0.08].map((x, xi) =>
-            [-0.08, 0.08].map((z, zi) => (
-              <mesh key={`${xi}-${zi}`} position={[x, 0.08, z]} castShadow>
-                <cylinderGeometry args={[0.055, 0.04, 0.16, 12]} />
-                <meshStandardMaterial
-                  color="#8c4722" // Terracotta clay kulhad
-                  roughness={0.85}
-                />
-              </mesh>
-            ))
-          )}
-          {/* Top stacked kulhad */}
-          <mesh position={[0, 0.22, 0]} castShadow>
-            <cylinderGeometry args={[0.055, 0.04, 0.16, 12]} />
-            <meshStandardMaterial color="#8c4722" roughness={0.85} />
+          <mesh geometry={kulhadsGeometry} castShadow>
+            <meshStandardMaterial
+              color="#8c4722" // Terracotta clay kulhad
+              roughness={0.85}
+            />
           </mesh>
         </group>
 

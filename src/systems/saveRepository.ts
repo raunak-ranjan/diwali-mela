@@ -6,6 +6,7 @@ export interface ISaveRepository {
   load(): Promise<SaveDataV1>;
   save(data: SaveDataV1): Promise<boolean>;
   reset(): Promise<SaveDataV1>;
+  hasSavedData(): boolean;
 }
 
 export const DEFAULT_SAVE_DATA: SaveDataV1 = {
@@ -92,6 +93,22 @@ export class LocalSaveRepository implements ISaveRepository {
       storage.setItem(testKey, '1');
       storage.removeItem(testKey);
       return true;
+    } catch {
+      return false;
+    }
+  }
+
+  hasSavedData(): boolean {
+    try {
+      const storage = this.getStorage();
+      if (!this.isStorageAvailable() || !storage) {
+        return this.memoryFallback !== null;
+      }
+      if (storage.getItem(STORAGE_KEY)) return true;
+      for (const legacyKey of LEGACY_STORAGE_KEYS) {
+        if (storage.getItem(legacyKey)) return true;
+      }
+      return false;
     } catch {
       return false;
     }

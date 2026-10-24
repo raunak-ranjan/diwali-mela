@@ -1,8 +1,37 @@
 import { useEffect } from 'react';
+import * as THREE from 'three';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { useGameStore } from '../../../stores/useGameStore';
 import { interactionRegistry } from '../../../systems/interactionRegistry';
 import { collisionSystem } from '../../../systems/collision';
 import { MarigoldGarland, AkashKandilLantern } from '../environment/FestivalProps';
+
+// Pre-batched static stall geometries (created once at module load to save draw calls)
+const stallCornerPolesGeometry = (() => {
+  const pole = new THREE.CylinderGeometry(0.05, 0.06, 2.4, 8);
+  const positions = [
+    [-1.8, 1.9, -1.6],
+    [-1.8, 1.9, 1.6],
+    [1.8, 1.9, -1.6],
+    [1.8, 1.9, 1.6],
+  ];
+  const geos = positions.map(([x, y, z]) => pole.clone().translate(x, y, z));
+  return BufferGeometryUtils.mergeGeometries(geos) || pole;
+})();
+
+const canopyStripesGeometry = (() => {
+  const stripe = new THREE.BoxGeometry(4.82, 0.015, 0.28);
+  const zPositions = [-1.6, -0.96, -0.32, 0.32, 0.96, 1.6];
+  const geos = zPositions.map((z) => stripe.clone().translate(0, 0.035, z));
+  return BufferGeometryUtils.mergeGeometries(geos) || stripe;
+})();
+
+const counterDiyasGeometry = (() => {
+  const diya = new THREE.CylinderGeometry(0.09, 0.05, 0.05, 10);
+  const zPositions = [-0.7, -0.2, 0.2, 0.7];
+  const geos = zPositions.map((z) => diya.clone().translate(1.85, 1.55, z));
+  return BufferGeometryUtils.mergeGeometries(geos) || diya;
+})();
 
 export const HandicraftStalls = () => {
   const openModal = useGameStore((s) => s.openModal);
@@ -57,18 +86,10 @@ export const HandicraftStalls = () => {
         <meshStandardMaterial color="#451a03" roughness={0.7} />
       </mesh>
 
-      {/* 4 Wooden Corner Canopy Poles */}
-      {[
-        [-1.8, -1.6],
-        [-1.8, 1.6],
-        [1.8, -1.6],
-        [1.8, 1.6],
-      ].map(([x, z], idx) => (
-        <mesh key={idx} position={[x, 1.9, z]} castShadow>
-          <cylinderGeometry args={[0.05, 0.06, 2.4, 8]} />
-          <meshStandardMaterial color="#451a03" roughness={0.8} />
-        </mesh>
-      ))}
+      {/* 4 Wooden Corner Canopy Poles (Batched into 1 draw call) */}
+      <mesh geometry={stallCornerPolesGeometry} castShadow>
+        <meshStandardMaterial color="#451a03" roughness={0.8} />
+      </mesh>
 
       {/* Royal Magenta & Turmeric Gold Striped Fabric Canopy */}
       <group position={[0, 3.25, 0]} rotation={[0, 0, -0.15]}>
@@ -76,13 +97,10 @@ export const HandicraftStalls = () => {
           <boxGeometry args={[4.8, 0.06, 4.2]} />
           <meshStandardMaterial color="#831843" roughness={0.7} />
         </mesh>
-        {/* Turmeric Gold Alternating Stripes */}
-        {[-1.6, -0.96, -0.32, 0.32, 0.96, 1.6].map((z, idx) => (
-          <mesh key={idx} position={[0, 0.035, z]}>
-            <boxGeometry args={[4.82, 0.015, 0.28]} />
-            <meshStandardMaterial color="#f59e0b" roughness={0.75} />
-          </mesh>
-        ))}
+        {/* Turmeric Gold Alternating Stripes (Batched into 1 draw call) */}
+        <mesh geometry={canopyStripesGeometry}>
+          <meshStandardMaterial color="#f59e0b" roughness={0.75} />
+        </mesh>
         {/* Scalloped Gold-Trimmed Valance */}
         <mesh position={[2.38, -0.22, 0]}>
           <boxGeometry args={[0.06, 0.42, 4.2]} />
@@ -190,15 +208,10 @@ export const HandicraftStalls = () => {
         </mesh>
       </group>
 
-      {/* 4. Display of Diwali Earthen Diyas on Front Counter */}
-      {[-0.7, -0.2, 0.2, 0.7].map((z, idx) => (
-        <group key={idx} position={[1.85, 1.52, z]}>
-          <mesh position={[0, 0.03, 0]} castShadow>
-            <cylinderGeometry args={[0.09, 0.05, 0.05, 10]} />
-            <meshStandardMaterial color="#8a431d" roughness={0.78} />
-          </mesh>
-        </group>
-      ))}
+      {/* 4. Display of Diwali Earthen Diyas on Front Counter (Batched into 1 draw call) */}
+      <mesh geometry={counterDiyasGeometry} castShadow>
+        <meshStandardMaterial color="#8a431d" roughness={0.78} />
+      </mesh>
 
       {/* 5. Phooljhadi (Golden Sparklers) Boxes Display */}
       <group position={[1.85, 1.52, 1.25]}>

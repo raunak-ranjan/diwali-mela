@@ -17,7 +17,7 @@ export const PlayerController = () => {
   const setCurrentZone = useGameStore((s) => s.setCurrentZone);
   const activeModal = useGameStore((s) => s.activeModal);
   const openModal = useGameStore((s) => s.openModal);
-  const ferrisWheelRide = useGameStore((s) => s.ferrisWheelRide);
+  const isFerrisWheelRiding = useGameStore((s) => s.ferrisWheelRide.isRiding);
   const exitFerrisWheel = useGameStore((s) => s.exitFerrisWheel);
 
   // Position and camera state
@@ -49,7 +49,7 @@ export const PlayerController = () => {
   // Safe grounded dismount on exiting Ferris Wheel
   const wasRidingRef = useRef(false);
   useEffect(() => {
-    if (wasRidingRef.current && !ferrisWheelRide.isRiding) {
+    if (wasRidingRef.current && !isFerrisWheelRiding) {
       // Safely place player on grounded boardwalk steps beside attraction
       pos.current.set(18.0, 0, 20.0);
       velocity.current.set(0, 0, 0);
@@ -59,8 +59,8 @@ export const PlayerController = () => {
         playerRef.current.position.set(18.0, 0, 20.0);
       }
     }
-    wasRidingRef.current = ferrisWheelRide.isRiding;
-  }, [ferrisWheelRide.isRiding]);
+    wasRidingRef.current = isFerrisWheelRiding;
+  }, [isFerrisWheelRiding]);
 
   // Keyboard events
   useEffect(() => {
@@ -174,7 +174,8 @@ export const PlayerController = () => {
     const input = useInputStore.getState();
 
     // Ferris Wheel riding camera & position lock
-    if (ferrisWheelRide.isRiding) {
+    const currentRide = useGameStore.getState().ferrisWheelRide;
+    if (currentRide.isRiding) {
       if (input.touchLookDelta.x !== 0 || input.touchLookDelta.y !== 0) {
         const touchSens = useGameStore.getState().settings.touchSensitivity;
         yaw.current -= input.touchLookDelta.x * 0.006 * touchSens;
@@ -186,8 +187,8 @@ export const PlayerController = () => {
       }
 
       // Wheel hub is at [24, 11, 20], radius 8.5, floor offset -1.8
-      const cabinIdx = ferrisWheelRide.cabinIndex || 0;
-      const angle = ferrisWheelRide.rotationAngle + (cabinIdx / 8) * Math.PI * 2;
+      const cabinIdx = currentRide.cabinIndex || 0;
+      const angle = currentRide.rotationAngle + (cabinIdx / 8) * Math.PI * 2;
       const cabinX = 24 + Math.cos(angle) * 8.5;
       const cabinY = 11 + Math.sin(angle) * 8.5 - 1.8;
       const cabinZ = 20;
@@ -323,8 +324,11 @@ export const PlayerController = () => {
     const perspCam = camera as THREE.PerspectiveCamera;
     if (perspCam.isPerspectiveCamera) {
       const targetFov = 60 + smoothSpeed.current * 4;
-      perspCam.fov = THREE.MathUtils.lerp(perspCam.fov, targetFov, 1 - Math.exp(-4 * safeDelta));
-      perspCam.updateProjectionMatrix();
+      const nextFov = THREE.MathUtils.lerp(perspCam.fov, targetFov, 1 - Math.exp(-4 * safeDelta));
+      if (Math.abs(nextFov - perspCam.fov) > 0.02) {
+        perspCam.fov = nextFov;
+        perspCam.updateProjectionMatrix();
+      }
     }
     // ── End Camera ─────────────────────────────────────────────────────────
 

@@ -1,4 +1,6 @@
 import React from 'react';
+import * as THREE from 'three';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { NpcOutfit } from '../../../types/npc';
 
 interface FestiveCharacterMeshProps {
@@ -7,6 +9,33 @@ interface FestiveCharacterMeshProps {
   isVendor?: boolean;
   walkBob?: number;
 }
+
+// Pre-batched symmetrical geometries (shared across all characters to save draw calls)
+const batchedLegsGeometry = (() => {
+  const left = new THREE.CylinderGeometry(0.085, 0.075, 0.7, 8).translate(-0.13, 0.35, 0);
+  const right = new THREE.CylinderGeometry(0.085, 0.075, 0.7, 8).translate(0.13, 0.35, 0);
+  return BufferGeometryUtils.mergeGeometries([left, right]) || left;
+})();
+
+const batchedShoesGeometry = (() => {
+  const left = new THREE.BoxGeometry(0.14, 0.09, 0.26).translate(-0.13, 0.05, 0.05);
+  const right = new THREE.BoxGeometry(0.14, 0.09, 0.26).translate(0.13, 0.05, 0.05);
+  return BufferGeometryUtils.mergeGeometries([left, right]) || left;
+})();
+
+const batchedVendorHandsGeometry = (() => {
+  const left = new THREE.BoxGeometry(0.06, 0.14, 0.04)
+    .rotateZ(0.4)
+    .rotateY(-0.2)
+    .rotateX(0.4)
+    .translate(-0.05, 0, 0);
+  const right = new THREE.BoxGeometry(0.06, 0.14, 0.04)
+    .rotateZ(-0.4)
+    .rotateY(0.2)
+    .rotateX(0.4)
+    .translate(0.05, 0, 0);
+  return BufferGeometryUtils.mergeGeometries([left, right]) || left;
+})();
 
 export const FestiveCharacterMesh: React.FC<FestiveCharacterMeshProps> = ({
   outfit,
@@ -25,7 +54,7 @@ export const FestiveCharacterMesh: React.FC<FestiveCharacterMeshProps> = ({
       {/* Pagri (Turban) - if specified */}
       {outfit.pagriColor && (
         <group position={[0, 1.61, 0]}>
-          <mesh castShadow>
+          <mesh>
             <cylinderGeometry args={[0.25, 0.23, 0.2, 12]} />
             <meshStandardMaterial
               color={outfit.pagriColor}
@@ -58,43 +87,26 @@ export const FestiveCharacterMesh: React.FC<FestiveCharacterMeshProps> = ({
         </mesh>
       )}
 
-      {/* Kurta Torso */}
+      {/* Kurta Torso - Primary representative silhouette shadow caster */}
       <mesh position={[0, 0.95, 0]} castShadow>
         <cylinderGeometry args={[0.26, 0.33, 0.78, 12]} />
         <meshStandardMaterial color={outfit.kurtaColor} roughness={0.5} />
       </mesh>
 
-      {/* Pyjama Legs */}
-      <mesh position={[-0.13, 0.35, 0]} castShadow>
-        <cylinderGeometry args={[0.085, 0.075, 0.7, 8]} />
-        <meshStandardMaterial color={outfit.pyjamaColor} roughness={0.7} />
-      </mesh>
-      <mesh position={[0.13, 0.35, 0]} castShadow>
-        <cylinderGeometry args={[0.085, 0.075, 0.7, 8]} />
+      {/* Pyjama Legs - Batched into 1 draw call */}
+      <mesh geometry={batchedLegsGeometry}>
         <meshStandardMaterial color={outfit.pyjamaColor} roughness={0.7} />
       </mesh>
 
-      {/* Traditional Jutti Shoes */}
-      <mesh position={[-0.13, 0.05, 0.05]} castShadow>
-        <boxGeometry args={[0.14, 0.09, 0.26]} />
-        <meshStandardMaterial color={outfit.juttiColor} metalness={0.3} />
-      </mesh>
-      <mesh position={[0.13, 0.05, 0.05]} castShadow>
-        <boxGeometry args={[0.14, 0.09, 0.26]} />
+      {/* Traditional Jutti Shoes - Batched into 1 draw call */}
+      <mesh geometry={batchedShoesGeometry}>
         <meshStandardMaterial color={outfit.juttiColor} metalness={0.3} />
       </mesh>
 
-      {/* Vendor Pranam / Welcoming Namaste Hands */}
+      {/* Vendor Pranam / Welcoming Namaste Hands - Batched hands into 1 draw call */}
       {isVendor && (
         <group position={[0, 1.05, 0.22]}>
-          {/* Left Hand */}
-          <mesh position={[-0.05, 0, 0]} rotation={[0.4, -0.2, 0.4]}>
-            <boxGeometry args={[0.06, 0.14, 0.04]} />
-            <meshStandardMaterial color={outfit.skinColor} />
-          </mesh>
-          {/* Right Hand */}
-          <mesh position={[0.05, 0, 0]} rotation={[0.4, 0.2, -0.4]}>
-            <boxGeometry args={[0.06, 0.14, 0.04]} />
+          <mesh geometry={batchedVendorHandsGeometry}>
             <meshStandardMaterial color={outfit.skinColor} />
           </mesh>
           {/* Golden Namaste Motif */}

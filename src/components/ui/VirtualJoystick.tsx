@@ -6,7 +6,7 @@ import { Hand } from 'lucide-react';
 
 export const VirtualJoystick: React.FC = () => {
   const setJoystickVector = useInputStore((s) => s.setJoystickVector);
-  const prompt = useGameStore((s) => s.prompt);
+  const hasPrompt = useGameStore((s) => Boolean(s.prompt && s.prompt.active));
   const activeModal = useGameStore((s) => s.activeModal);
 
   const [active, setActive] = useState(false);
@@ -66,8 +66,9 @@ export const VirtualJoystick: React.FC = () => {
 
   // Dedicated interaction button trigger
   const handleActionClick = () => {
-    if (prompt && prompt.active) {
-      const target = interactionRegistry.get(prompt.id);
+    const currentPrompt = useGameStore.getState().prompt;
+    if (currentPrompt && currentPrompt.active) {
+      const target = interactionRegistry.get(currentPrompt.id);
       if (target) {
         target.onInteract();
       }
@@ -98,7 +99,7 @@ export const VirtualJoystick: React.FC = () => {
       </div>
 
       {/* Dedicated Action / Interaction Button */}
-      {prompt && prompt.active && (
+      {hasPrompt && (
         <button
           onClick={handleActionClick}
           className="pointer-events-auto w-16 h-16 rounded-full bg-gradient-to-r from-festive-gold to-festive-saffron text-amber-950 font-black flex flex-col items-center justify-center shadow-2xl border-2 border-white/60 active:scale-90 transition-transform animate-bounce"

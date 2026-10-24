@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { soundEngine } from '../../../audio/soundEngine';
 import { useGameStore } from '../../../stores/useGameStore';
+import { useInputStore } from '../../../stores/useInputStore';
 
 interface SparkParticle {
   active: boolean;
@@ -107,10 +108,21 @@ export const FireworksShow: React.FC<{ active?: boolean }> = ({ active: propActi
   const isScheduledActive = propActive || (fireworksMode === 'scheduled' && countdown === 0);
 
   const quality = useGameStore((s) => s.settings.graphicsQuality);
+  const isTouchDevice = useInputStore((s) => s.isTouchDevice);
   const reducedMotion = useGameStore((s) => s.settings.reducedMotion);
 
-  // Budget particles based on graphics tier
-  const maxParticles = quality === 'high' ? 1200 : quality === 'medium' ? 800 : 450;
+  // Budget particles based on graphics tier and mobile capability
+  const maxParticles = isTouchDevice
+    ? quality === 'high'
+      ? 600
+      : quality === 'medium'
+      ? 450
+      : 300
+    : quality === 'high'
+    ? 1200
+    : quality === 'medium'
+    ? 800
+    : 450;
 
   // Reusable procedural spark texture
   const sparkTexture = useMemo(() => createSparkTexture(), []);

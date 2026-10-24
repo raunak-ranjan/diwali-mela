@@ -2,10 +2,14 @@ import { useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { useGameStore } from '../../../stores/useGameStore';
+import { useInputStore } from '../../../stores/useInputStore';
 
 export const FestivalLighting = () => {
   const quality = useGameStore((s) => s.settings.graphicsQuality);
+  const isTouchDevice = useInputStore((s) => s.isTouchDevice);
   const moonLightRef = useRef<THREE.DirectionalLight>(null);
+
+  const shadowMapSize = isTouchDevice ? (quality === 'low' ? 512 : 1024) : (quality === 'high' ? 2048 : 1024);
 
   // Subtle natural celestial breathing of moonlight
   useFrame(({ clock }) => {
@@ -41,9 +45,9 @@ export const FestivalLighting = () => {
         position={[42, 28, -16]}
         intensity={0.82}
         color="#bcd7ff"
-        castShadow={quality !== 'low'}
-        shadow-mapSize-width={quality === 'high' ? 2048 : 1024}
-        shadow-mapSize-height={quality === 'high' ? 2048 : 1024}
+        castShadow={!isTouchDevice && quality !== 'low'}
+        shadow-mapSize-width={shadowMapSize}
+        shadow-mapSize-height={shadowMapSize}
         shadow-camera-near={1}
         shadow-camera-far={120}
         shadow-camera-left={-45}
