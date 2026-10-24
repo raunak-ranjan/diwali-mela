@@ -407,6 +407,69 @@ class FestiveSoundEngine {
     osc.stop(now + 0.28);
   }
 
+  /**
+   * Sound effect: Visitor greeting - Warm festive sitar/glockenspiel chord chime
+   */
+  public playVisitorGreeting() {
+    if (!this.ctx || this.isMuted) return;
+    this.resume();
+    const now = this.ctx.currentTime;
+    const notes = [659.25, 830.61, 987.77, 1318.5]; // E5, G#5, B5, E6
+    notes.forEach((freq, idx) => {
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+
+      gain.gain.setValueAtTime(0.001, now + idx * 0.05);
+      gain.gain.linearRampToValueAtTime(0.18, now + idx * 0.05 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.05 + 0.6);
+
+      osc.connect(gain);
+      gain.connect(this.sfxGain!);
+
+      osc.start(now + idx * 0.05);
+      osc.stop(now + idx * 0.05 + 0.65);
+    });
+  }
+
+  /**
+   * Sound effect: Crowd applause & festive cheer
+   */
+  public playCrowdApplause() {
+    if (!this.ctx || this.isMuted) return;
+    this.resume();
+    const now = this.ctx.currentTime;
+
+    // Generate gentle burst of rhythmic handclaps via bandpass filtered noise
+    const bufferSize = Math.floor(this.ctx.sampleRate * 1.2);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.45));
+    }
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1200, now);
+    filter.Q.setValueAtTime(1.8, now);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.sfxGain!);
+
+    noise.start(now);
+    noise.stop(now + 1.2);
+  }
+
   public stopFestiveMusic() {
     this.isMusicPlaying = false;
     if (this.musicInterval) {

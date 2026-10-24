@@ -107,7 +107,8 @@ export type ActiveModalType =
   | 'settings'
   | 'pause'
   | 'rewards'
-  | 'inventory';
+  | 'inventory'
+  | 'dialogue';
 
 interface GameState {
   isLoaded: boolean;

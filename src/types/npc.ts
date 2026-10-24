@@ -2,6 +2,26 @@ export type NpcState = 'idle' | 'walking' | 'pausing' | 'turning' | 'queuing' | 
 
 export type Waypoint = [number, number, number];
 
+export type NpcPersonality = 'cheerful' | 'curious' | 'devout' | 'foodie' | 'spectator' | 'elder';
+
+export interface VisitorDialogue {
+  greeting: string;
+  greetingHindi?: string;
+  festivalTip: string;
+  currentThought: string;
+}
+
+export interface VisitorRoutine {
+  id: string;
+  activityLabel: string;
+  activityHindi: string;
+  targetZone?: string;
+  waypoints: Waypoint[];
+  pauseDuration: number;
+  targetQueueId?: string;
+  watchFocusPoint?: Waypoint;
+}
+
 export interface NpcOutfit {
   skinColor: string;
   kurtaColor: string;
@@ -30,6 +50,7 @@ export interface AmbientVisitorConfig {
   id: string;
   name: string;
   role: 'stroller' | 'devotee' | 'spectator' | 'shopper';
+  personality?: NpcPersonality;
   waypoints: Waypoint[];
   speed: number;
   pauseDuration: number; // in seconds
@@ -40,6 +61,11 @@ export interface AmbientVisitorConfig {
   targetQueueId?: string;
   /** Optional specific landmark orientation when pausing/watching */
   watchFocusPoint?: Waypoint;
+  /** Living World extensions */
+  currentActivity?: string;
+  activityHindi?: string;
+  dialogues?: VisitorDialogue[];
+  routines?: VisitorRoutine[];
 }
 
 export interface VendorNpcConfig {
